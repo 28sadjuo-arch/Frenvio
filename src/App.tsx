@@ -36,48 +36,48 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-function AppContent() {
-  const { theme } = useTheme()
-
-  return (
-    <Router>
-      <div className={`${theme} min-h-screen bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100`}>
-        <Helmet>
-          <title>FREVIO – Where friends share, chat, and connect</title>
-          <meta name="description" content="We believe social connections should be beautiful, secure, and meaningful." />
-        </Helmet>
-
-        <TopNav />
-        <main className="container mx-auto px-4 pb-20 pt-16 md:pt-4">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/profile/:id" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-            <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
-            <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-            <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
-            <Route path="/about" element={<About />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/contact" element={<Contact />} />
-          </Routes>
-        </main>
-        <BottomNav />
-      </div>
-    </Router>
-  )
-}
-
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <AppContent />
+          <Router>
+            <AppContent />
+          </Router>
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
+  )
+}
+
+function AppContent() {
+  const { theme } = useTheme()
+
+  return (
+    <div className={`${theme} min-h-screen bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100`}>
+      <Helmet>
+        <title>FREVIO – Where friends share, chat, and connect</title>
+        <meta name="description" content="We believe social connections should be beautiful, secure, and meaningful." />
+      </Helmet>
+
+      <TopNav />
+      <main className="container mx-auto px-4 pb-20 pt-16 md:pt-4">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/profile/:id" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+          <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+          <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+          <Route path="/about" element={<About />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/contact" element={<Contact />} />
+        </Routes>
+      </main>
+      <BottomNav />
+    </div>
   )
 }
