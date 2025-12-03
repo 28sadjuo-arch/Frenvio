@@ -36,11 +36,23 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  )
+}
+
 function AppContent() {
   const { theme } = useTheme()
 
   return (
-    <div className={`${theme} min-h-screen bg-gray-50 dark:bg-slate-950`}>
+    <div className={`${theme} min-h-screen bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100`}>
       <Helmet>
         <title>FREVIO – Where friends share, chat, and connect</title>
         <meta name="description" content="We believe social connections should be beautiful, secure, and meaningful." />
@@ -48,7 +60,7 @@ function AppContent() {
 
       <Router>
         <TopNav />
-        <main className="container mx-auto px-4 pb-20 pt-16 md:pt-4">
+        <main className="container mx-auto px-4 pb-20 pt-16 md:pt-4 min-h-screen">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/auth" element={<Auth />} />
@@ -67,17 +79,5 @@ function AppContent() {
         <BottomNav />
       </Router>
     </div>
-  )
-}
-
-export default function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>
-          <AppContent />
-        </ThemeProvider>
-      </AuthProvider>
-    </QueryClientProvider>
   )
 }
