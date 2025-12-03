@@ -4,15 +4,10 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/',  // ← THIS IS THE KEY FIX FOR VERCEL ROOT PATH
+  base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-    },
-  },
-  css: {
-    postcss: {
-      plugins: [require('tailwindcss'), require('autoprefixer')],
     },
   },
   server: {
