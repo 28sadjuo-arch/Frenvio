@@ -8,13 +8,12 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
+      '@': path.resolve(__dirname, './src')
+    }
   },
   css: {
     postcss: {
-      plugins: [tailwindcss(), autoprefixer()],
-    },
- 1},
-  },
+      plugins: [tailwindcss(), autoprefixer()]
+    }
+  }
 })
