@@ -21,6 +21,7 @@ import Contact from './pages/Contact'
 import TopNav from './components/layout/TopNav'
 import BottomNav from './components/layout/BottomNav'
 import LoadingSpinner from './components/common/LoadingSpinner'
+import PageLoadingBar from './components/common/PageLoadingBar'
 
 const queryClient = new QueryClient()
 
@@ -58,6 +59,7 @@ function AppContent() {
 
   return (
     <div className={`${theme} min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors`}>
+      <PageLoadingBar />
       {user && <TopNav />}
       <Routes>
         <Route path="/" element={<Home />} />
