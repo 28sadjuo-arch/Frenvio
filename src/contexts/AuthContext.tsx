@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
-import { Bolt Database } from "../lib/supabase"
-import { Session, User } from "@supabase/Bolt Database-js"
+import { superbase } from "../lib/supabase"
+import { Session, User } from "@supabase/supabase-js"
 
 export type Profile = {
   id: string
