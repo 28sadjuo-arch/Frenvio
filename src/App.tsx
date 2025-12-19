@@ -10,8 +10,9 @@ import Chat from "./pages/Chat"
 const App = () => {
   const { user, loading } = useAuth()
 
-  if (loading) return null
-
+if (loading) return null
+import { Navigate } from "react-router-dom"
+import { useAuth } from "./contexts/AuthContext"
   return (
     <Routes>
       <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Home />} />
