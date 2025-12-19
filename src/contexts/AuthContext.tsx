@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
-import { superbase } from "../lib/supabase"
+import { supabase } from "../lib/supabase"
 import { Session, User } from "@supabase/supabase-js"
 
 export type Profile = {
@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return
     }
 
-    Bolt Database
+    supabase
       .from("profiles")
       .select("*")
       .eq("id", user.id)
