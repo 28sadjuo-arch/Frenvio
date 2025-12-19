@@ -2,13 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background-color: #f8fafc;
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-50 transition-colors;
+  }
 }
 
-.dark {
-  background-color: #0f172a;
-  color: #f1f5f9;
+@layer utilities {
+  .backdrop-blur {
+    @apply backdrop-blur-xl;
+  }
 }
