@@ -1,63 +1,72 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { supabase, Profile } from '../lib/supabase'
-import { Session, User } from '@supabase/supabase-js'
+import React, { createContext, useContext, useEffect, useState } from "react"
+import { supabase } from "../lib/supabase"
+import { Session, User } from "@supabase/supabase-js"
+
+export type Profile = {
+  id: string
+  username: string
+  name?: string
+  location?: string
+  bio?: string
+  verified: boolean
+}
 
 type AuthContextType = {
   user: User | null
   session: Session | null
   profile: Profile | null
   loading: boolean
-  signUp: (email: string, password: string, username: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | null>(null)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session) fetchProfile(session.user.id)
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setUser(data.session?.user ?? null)
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session) fetchProfile(session.user.id)
-      else setProfile(null)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      data.subscription.unsubscribe()
+    }
   }, [])
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-    setProfile(data)
-  }
-
-  const signUp = async (email: string, password: string, username: string) => {
-    const { error } = await supabase.auth.signUp({ email, password })
-    if (!error) {
-      await supabase.from('profiles').upsert({ id: user!.id, username, verified: false, followers_count: 0, following_count: 0 })
-      // Send welcome email via function
-      await supabase.functions.invoke('send-email', {
-        to: email,
-        subject: 'Welcome to FREVIO!',
-        body: 'Thanks for joining. Where friends share, chat, and connect.'
-      })
+  useEffect(() => {
+    if (!user) {
+      setProfile(null)
+      return
     }
-  }
+
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) setProfile(data as Profile)
+      })
+  }, [user])
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    if (error) throw error
   }
 
   const signOut = async () => {
@@ -65,14 +74,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ user, session, profile, loading, signIn, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   )
 }
 
 export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (context === undefined) throw new Error('useAuth must be used within AuthProvider')
-  return context
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider")
+  return ctx
 }
