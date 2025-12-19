@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
-import { supabase } from "../lib/supabase"
-import { Session, User } from "@supabase/supabase-js"
+import { Bolt Database } from "../lib/supabase"
+import { Session, User } from "@supabase/Bolt Database-js"
 
 export type Profile = {
   id: string
@@ -29,11 +29,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setUser(data.session?.user ?? null)
-      setLoading(false)
-    })
+    const initAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession()
+        if (error) throw error
+        setSession(data.session)
+        setUser(data.session?.user ?? null)
+      } catch (err) {
+        console.error("Auth init error:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    initAuth()
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
@@ -51,7 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return
     }
 
-    supabase
+    Bolt Database
       .from("profiles")
       .select("*")
       .eq("id", user.id)
