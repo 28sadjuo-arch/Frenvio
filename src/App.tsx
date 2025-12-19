@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { useAuth } from "./contexts/AuthContext"
 
 import Home from "./pages/Home"
@@ -13,34 +13,18 @@ const App = () => {
   if (loading) return null
 
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={user ? <Navigate to="/dashboard" /> : <Home />}
-      />
+    <Router>
+      <Routes>
+        <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Home />} />
+        <Route path="/auth" element={user ? <Navigate to="/dashboard" /> : <Auth />} />
 
-      <Route
-        path="/auth"
-        element={user ? <Navigate to="/dashboard" /> : <Auth />}
-      />
+        <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/auth" />} />
+        <Route path="/profile/:id" element={user ? <Profile /> : <Navigate to="/auth" />} />
+        <Route path="/chat" element={user ? <Chat /> : <Navigate to="/auth" />} />
 
-      <Route
-        path="/dashboard"
-        element={user ? <Dashboard /> : <Navigate to="/auth" />}
-      />
-
-      <Route
-        path="/profile/:id"
-        element={user ? <Profile /> : <Navigate to="/auth" />}
-      />
-
-      <Route
-        path="/chat"
-        element={user ? <Chat /> : <Navigate to="/auth" />}
-      />
-
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </Router>
   )
 }
 
