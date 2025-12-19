@@ -1,43 +1,31 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react'
 
+type Theme = 'light' | 'dark'
 type ThemeContextType = {
-  theme: 'light' | 'dark';
-  toggleTheme: () => void;
-};
+  theme: Theme
+  toggleTheme: () => void
+}
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<Theme>('dark') // Default dark-blue
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
-    setTheme(initialTheme);
-    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
-  }, []);
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  }, [theme])
 
-  const toggleTheme = () => {
-    setTheme(prev => {
-      const newTheme = prev === 'light' ? 'dark' : 'light';
-      localStorage.setItem('theme', newTheme);
-      document.documentElement.classList.toggle('dark', newTheme === 'dark');
-      return newTheme;
-    });
-  };
+  const toggleTheme = () => setTheme((prev) => prev === 'dark' ? 'light' : 'dark')
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
-  );
+  )
 }
 
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
-  }
-  return context;
+export const useTheme = () => {
+  const context = useContext(ThemeContext)
+  if (context === undefined) throw new Error('useTheme must be used within ThemeProvider')
+  return context
 }

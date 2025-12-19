@@ -1,53 +1,83 @@
-import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { Auth } from './pages/Auth';
-import { Home } from './pages/Home';
-import { Dashboard } from './pages/Dashboard';
+import React from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ThemeProvider, useTheme } from './contexts/ThemeContext'
+import { HelmetProvider } from 'react-helmet-async'
 
-function AppContent() {
-  const { user, loading } = useAuth();
-  const [currentPage, setCurrentPage] = useState('home');
+import Home from './pages/Home'
+import Auth from './pages/Auth'
+import Dashboard from './pages/Dashboard'
+import Profile from './pages/Profile'
+import Chat from './pages/Chat'
+import Search from './pages/Search'
+import Notifications from './pages/Notifications'
+import Admin from './pages/Admin'
+import About from './pages/About'
+import Blog from './pages/Blog'
+import Privacy from './pages/Privacy'
+import Contact from './pages/Contact'
 
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.slice(1);
-      setCurrentPage(hash || 'home');
-    };
+import TopNav from './components/layout/TopNav'
+import BottomNav from './components/layout/BottomNav'
+import LoadingSpinner from './components/common/LoadingSpinner'
 
-    window.addEventListener('hashchange', handleHashChange);
-    handleHashChange();
+const queryClient = new QueryClient()
 
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <LoadingSpinner />
+  return user ? <>{children}</> : <Navigate to="/auth" replace />
+}
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-blue-200 border-t-blue-500 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600 dark:text-slate-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    if (currentPage === 'auth') {
-      return <Auth />;
-    }
-    return <Home />;
-  }
-
-  return <Dashboard />;
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { profile } = useAuth()
+  if (!profile?.verified) return <Navigate to="/dashboard" replace />
+  return <>{children}</>
 }
 
 export default function App() {
   return (
-    <ThemeProvider>
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AppContent />
+        <ThemeProvider>
+          <HelmetProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </HelmetProvider>
+        </ThemeProvider>
       </AuthProvider>
-    </ThemeProvider>
-  );
+    </QueryClientProvider>
+  )
+}
+
+function AppContent() {
+  const { theme } = useTheme()
+  const { user } = useAuth()
+
+  return (
+    <div className={`${theme} min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors`}>
+      {user && <TopNav />}
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/blog" element={<Blog />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/contact" element={<Contact />} />
+        
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/profile/:id" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+        <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+        
+        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      {user && <BottomNav />}
+    </div>
+  )
 }
