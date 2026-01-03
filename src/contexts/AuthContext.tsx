@@ -1,13 +1,18 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { supabase, Profile } from '../lib/supabase'
 import type { Session, User } from '@supabase/supabase-js'
+import { supabase, Profile } from '../lib/supabase'
 
 type AuthContextType = {
   user: User | null
   session: Session | null
   profile: Profile | null
   loading: boolean
-  signUp: (email: string, password: string, username: string, fullName: string) => Promise<{ ok: boolean; error?: string }>
+  signUp: (
+    email: string,
+    password: string,
+    username: string,
+    fullName: string,
+  ) => Promise<{ ok: boolean; error?: string }>
   signIn: (identifier: string, password: string) => Promise<{ ok: boolean; error?: string }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
@@ -15,105 +20,99 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchProfile = async (uid?: string | null) => {
-    const id = uid ?? user?.id
-    if (!id) {
+  const fetchProfile = async (uid: string | null) => {
+    if (!uid) {
       setProfile(null)
       return
     }
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle()
-    if (!error) setProfile(data as Profile)
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle()
+    if (error) {
+      // If RLS blocks reads, you'll see it in console; app still works without profile details.
+      console.warn('fetchProfile error', error.message)
+      setProfile(null)
+      return
+    }
+    setProfile((data as Profile) ?? null)
+  }
+
+  const refreshProfile = async () => {
+    await fetchProfile(user?.id ?? null)
   }
 
   useEffect(() => {
+    let mounted = true
+
     supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return
       setSession(data.session)
       setUser(data.session?.user ?? null)
       setLoading(false)
       fetchProfile(data.session?.user?.id ?? null)
     })
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
       setUser(newSession?.user ?? null)
       fetchProfile(newSession?.user?.id ?? null)
     })
 
-    return () => subscription.unsubscribe()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      mounted = false
+      sub.subscription.unsubscribe()
+    }
   }, [])
 
-  const refreshProfile = async () => {
-    await fetchProfile(user?.id ?? null)
-  }
-
   const signUp = async (email: string, password: string, username: string, fullName: string) => {
+    // Basic normalization
+    const cleanUsername = (username || '').trim().replace(/^@+/, '').toLowerCase()
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        // If your Supabase Auth email confirmation is ON, the user may need to confirm first.
-        emailRedirectTo: window.location.origin + '/dashboard',
-        data: { username },
+        data: { username: cleanUsername, full_name: fullName },
       },
     })
 
     if (error) return { ok: false, error: error.message }
 
-    // Create profile row right away if we already have the user id.
+    // Create/Upsert profile row (if we already have the user id).
     const uid = data.user?.id
     if (uid) {
-      await supabase.from('profiles').upsert({
+      const { error: upsertErr } = await supabase.from('profiles').upsert({
         id: uid,
-        username,
-        display_name: fullName || null,
         email,
+        username: cleanUsername,
+        display_name: fullName || null,
         verified: false,
-        followers_count: 0,
-        following_count: 0,
       })
-      await fetchProfile(uid)
-    }
-
-    // Welcome email via Edge Function (works only after you deploy the function + set secrets).
-    try {
-      await supabase.functions.invoke('send-email', {
-        body: {
-          to: email,
-          subject: 'Welcome to Frenvio!',
-          body: 'Thanks for joining Frenvio. Where friends share, chat, and connect.',
-        },
-      })
-    } catch {
-      // Ignore silently; the app should still work even if email function isn't deployed.
+      if (upsertErr) console.warn('profile upsert error', upsertErr.message)
     }
 
     return { ok: true }
   }
 
   const signIn = async (identifier: string, password: string) => {
-    let email = identifier.trim()
-    if (!email) return { ok: false, error: 'Please enter your email or username.' }
+    const id = (identifier || '').trim()
+    let email = id
 
-    // Allow login with username: look up the email in profiles (requires profiles.email column + select policy).
-    if (!email.includes('@')) {
-      const { data } = await supabase.from('profiles').select('email').eq('username', email).maybeSingle()
-      if (!data?.email) return { ok: false, error: 'Username not found.' }
+    // Allow login with username: look up email from profiles
+    if (!id.includes('@')) {
+      const uname = id.replace(/^@+/, '').toLowerCase()
+      const { data, error } = await supabase.from('profiles').select('email').eq('username', uname).maybeSingle()
+      if (error) return { ok: false, error: 'Username not found or not accessible yet.' }
+      if (!data?.email) return { ok: false, error: 'No email found for that username.' }
       email = data.email
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { ok: false, error: error.message }
-    return { ok: true }
-  }
     return { ok: true }
   }
 
