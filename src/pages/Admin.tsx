@@ -1,134 +1,55 @@
-import React, { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import React, { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { supabase, Profile } from '../lib/supabase'
-import { Shield, Ban, Flag } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 
 const Admin: React.FC = () => {
-  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
 
-  const { data: users } = useQuery({
-    queryKey: ['users'],
+  const { data: users, isLoading } = useQuery({
+    queryKey: ['admin-users', search],
     queryFn: async () => {
-      let query = supabase.from('profiles').select('*')
-      if (search) query = query.ilike('username', `%${search}%`)
-      const { data } = await query
-      return data as Profile[]
-    }
-  })
-
-  const { data: reports } = useQuery({
-    queryKey: ['reports'],
-    queryFn: async () => supabase.from('reports').select('*')
-  })
-
-  const verifyMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      await supabase.from('profiles').update({ verified: true }).eq('id', userId)
-      // Send verification email
-      await supabase.functions.invoke('send-email', {
-        to: 'user@email.com', // Fetch email from profiles
-        subject: 'Verified on FREVIO!',
-        body: 'You are now verified.'
-      })
+      let q = supabase.from('profiles').select('*').order('username', { ascending: true }).limit(100)
+      if (search.trim()) q = q.ilike('username', `%${search}%`)
+      const { data, error } = await q
+      if (error) return []
+      return (data || []) as Profile[]
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] })
-  })
-
-  const banMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      await supabase.from('profiles').update({ banned: true }).eq('id', userId)
-      // Send ban email
-      await supabase.functions.invoke('send-email', {
-        to: 'user@email.com',
-        subject: 'Account Suspended',
-        body: 'Your account has been banned. Appeal at support@frenvio.com'
-      })
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] })
-  })
-
-  const resolveReport = useMutation({
-    mutationFn: async ({ reportId, status }: { reportId: string; status: string }) => {
-      await supabase.from('reports').update({ status }).eq('id', reportId)
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reports'] })
   })
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6 flex items-center"><Shield className="mr-2 h-6 w-6" /> Admin Dashboard</h1>
-      
-      <section className="mb-8">
-        <h2 className="text-2xl mb-4">Users</h2>
+    <div className="space-y-4">
+      <h1 className="text-xl font-extrabold tracking-tight">Admin</h1>
+
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
         <input
-          type="text"
-          placeholder="Search users..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="p-2 border rounded mb-4"
+          placeholder="Search users…"
+          className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 outline-none"
         />
-        <div className="overflow-x-auto">
-          <table className="w-full bg-white dark:bg-gray-800 rounded shadow">
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Verified</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users?.map((user) => (
-                <tr key={user.id}>
-                  <td>{user.username}</td>
-                  <td>{user.verified ? 'Yes' : 'No'}</td>
-                  <td>
-                    <button onClick={() => verifyMutation.mutate(user.id)} className="bg-green-500 text-white px-2 py-1 rounded mr-2">
-                      Verify
-                    </button>
-                    <button onClick={() => banMutation.mutate(user.id)} className="bg-red-500 text-white px-2 py-1 rounded">
-                      <Ban className="h-3 w-3 inline" /> Ban
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
-      <section>
-        <h2 className="text-2xl mb-4 flex items-center"><Flag className="mr-2 h-6 w-6" /> Reports</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full bg-white dark:bg-gray-800 rounded shadow">
-            <thead>
-              <tr>
-                <th>Reason</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reports?.data?.map((report: any) => (
-                <tr key={report.id}>
-                  <td>{report.reason}</td>
-                  <td>{report.status}</td>
-                  <td>
-                    <select
-                      defaultValue={report.status}
-                      onChange={(e) => resolveReport.mutate({ reportId: report.id, status: e.target.value })}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="resolved">Resolved</option>
-                      <option value="actioned">Actioned</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {isLoading && <div className="mt-3 text-sm text-slate-500">Loading…</div>}
+
+        <div className="mt-4 space-y-2">
+          {(users || []).map((u) => (
+            <div key={u.id} className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 p-3">
+              <div>
+                <div className="font-semibold">{u.username}</div>
+                <div className="text-xs text-slate-500">{u.id}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                {!!u.verified && <ShieldCheck className="h-4 w-4 text-blue-500" />}
+              </div>
+            </div>
+          ))}
+          {(!users || users.length === 0) && !isLoading && <div className="text-sm text-slate-500">No users.</div>}
         </div>
-      </section>
+      </div>
+
+      <p className="text-xs text-slate-500">
+        Note: real admin controls should be implemented with Supabase roles + Row Level Security.
+      </p>
     </div>
   )
 }

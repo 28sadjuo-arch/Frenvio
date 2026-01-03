@@ -7,27 +7,43 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 }
 
+type Payload = {
+  to: string
+  subject: string
+  body: string
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders })
-  }
+  // CORS preflight
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders })
 
   try {
-    const { to, subject, body } = await req.json()
+    const { to, subject, body } = (await req.json()) as Payload
+
+    if (!to || !subject || !body) {
+      return new Response(JSON.stringify({ error: "Missing to/subject/body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    }
+
+    const user = Deno.env.get("NODEMAILER_USER")
+    const pass = Deno.env.get("NODEMAILER_PASS")
+
+    if (!user || !pass) {
+      return new Response(JSON.stringify({ error: "Missing NODEMAILER_USER/NODEMAILER_PASS env vars" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    }
 
     const transporter = nodemailer.createTransport({
-      host: Deno.env.get("NODEMAILER_HOST") || "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: Deno.env.get("NODEMAILER_USER"),
-        pass: Deno.env.get("NODEMAILER_PASS"),
-      },
+      service: "gmail",
+      auth: { user, pass },
     })
 
     await transporter.sendMail({
-      from: `"FREVIO" <${Deno.env.get("NODEMAILER_USER")}>`,
+      from: user,
       to,
       subject,
       text: body,

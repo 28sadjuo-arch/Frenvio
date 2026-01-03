@@ -1,22 +1,44 @@
 import React from 'react'
 import { Helmet } from 'react-helmet-async'
+import { Link } from 'react-router-dom'
 
 const Privacy: React.FC = () => (
-  <div className="max-w-3xl mx-auto mt-8 p-6 prose dark:prose-invert">
+  <div className="space-y-4">
     <Helmet>
-      <title>Privacy Policy - FRENVIO</title>
+      <title>Privacy Policy — Frenvio</title>
     </Helmet>
-    <h1>Privacy Policy</h1>
-    <p>Last updated: June 3, 2025</p>
-    <p>FRENVIO ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information.</p>
-    <h2>Information We Collect</h2>
-    <p>We collect personal data such as email, username, and posts to provide our services. We do not sell your data.</p>
-    <h2>How We Use It</h2>
-    <p>To enable features like chat, notifications, and profiles. Data is stored securely in Supabase with RLS enabled.</p>
-    <h2>Your Rights</h2>
-    <p>You can access, update, or delete your data. Contact support@frenvio.com for requests. Compliant with GDPR/CCPA.</p>
-    <p>Changes to this policy will be posted here. Continued use constitutes acceptance.</p>
-    <p>Contact: Amahoro Sadju, Founder & CEO.</p>
+
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+      <h1 className="text-3xl font-extrabold tracking-tight">Privacy Policy</h1>
+      <p className="mt-3 text-slate-600 dark:text-slate-300">
+        We respect your privacy. This policy explains what data we collect, why we collect it, and how you can control it.
+      </p>
+
+      <h2 className="mt-6 text-xl font-extrabold">What we collect</h2>
+      <ul className="mt-2 list-disc pl-5 text-slate-600 dark:text-slate-300 space-y-1">
+        <li>Account data: email, username, and profile details you provide.</li>
+        <li>Content: posts and messages you create.</li>
+        <li>Usage data: basic analytics to improve performance and reliability.</li>
+      </ul>
+
+      <h2 className="mt-6 text-xl font-extrabold">How we use it</h2>
+      <ul className="mt-2 list-disc pl-5 text-slate-600 dark:text-slate-300 space-y-1">
+        <li>To run the service: authentication, posting, messaging, and notifications.</li>
+        <li>To keep the platform safe: abuse prevention and moderation.</li>
+        <li>To improve Frenvio: bug fixes and product iteration.</li>
+      </ul>
+
+      <h2 className="mt-6 text-xl font-extrabold">Your choices</h2>
+      <ul className="mt-2 list-disc pl-5 text-slate-600 dark:text-slate-300 space-y-1">
+        <li>Edit your profile anytime.</li>
+        <li>Request account deletion from Settings.</li>
+        <li>Contact us if you have privacy questions.</li>
+      </ul>
+
+      <p className="mt-6 text-sm text-slate-500">
+        Questions? Reach out via <Link to="/contact" className="underline underline-offset-2">Contact</Link>.
+      </p>
+    </div>
   </div>
 )
 
