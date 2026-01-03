@@ -14,7 +14,7 @@ const Search: React.FC = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, display_name, verified, avatar_url')
-        .ilike('username', `%${query}%`)
+        .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
         .limit(20)
 
       if (error) return []

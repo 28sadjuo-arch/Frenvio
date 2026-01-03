@@ -7,8 +7,8 @@ type AuthContextType = {
   session: Session | null
   profile: Profile | null
   loading: boolean
-  signUp: (email: string, password: string, username: string) => Promise<{ ok: boolean; error?: string }>
-  signIn: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>
+  signUp: (email: string, password: string, username: string, fullName: string) => Promise<{ ok: boolean; error?: string }>
+  signIn: (identifier: string, password: string) => Promise<{ ok: boolean; error?: string }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await fetchProfile(user?.id ?? null)
   }
 
-  const signUp = async (email: string, password: string, username: string) => {
+  const signUp = async (email: string, password: string, username: string, fullName: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -74,6 +74,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await supabase.from('profiles').upsert({
         id: uid,
         username,
+        display_name: fullName || null,
+        email,
         verified: false,
         followers_count: 0,
         following_count: 0,
@@ -97,9 +99,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { ok: true }
   }
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (identifier: string, password: string) => {
+    let email = identifier.trim()
+    if (!email) return { ok: false, error: 'Please enter your email or username.' }
+
+    // Allow login with username: look up the email in profiles (requires profiles.email column + select policy).
+    if (!email.includes('@')) {
+      const { data } = await supabase.from('profiles').select('email').eq('username', email).maybeSingle()
+      if (!data?.email) return { ok: false, error: 'Username not found.' }
+      email = data.email
+    }
+
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  }
     return { ok: true }
   }
 

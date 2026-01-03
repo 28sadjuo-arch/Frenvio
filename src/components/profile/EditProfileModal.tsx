@@ -22,6 +22,15 @@ export default function EditProfileModal({
   const [bannerFile, setBannerFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
 
+
+  React.useEffect(() => {
+    if (!open) return
+    setDisplayName(profile.display_name || '')
+    setBio(profile.bio || '')
+    setAvatarFile(null)
+    setBannerFile(null)
+  }, [open, profile.id])
+
   const avatarPreview = useMemo(() => (avatarFile ? URL.createObjectURL(avatarFile) : profile.avatar_url), [avatarFile, profile.avatar_url])
   const bannerPreview = useMemo(() => (bannerFile ? URL.createObjectURL(bannerFile) : profile.banner_url), [bannerFile, profile.banner_url])
 

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Heart, MessageCircle, Repeat2, Share, MoreHorizontal, ShieldCheck, Trash2, Flag } from 'lucide-react'
+import { Heart, MessageCircle, Repeat2, Share, MoreHorizontal, ShieldCheck, Trash2, Flag, X } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Post, Profile, supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -73,7 +73,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   }
 
   const handleShare = async () => {
-    const url = `${window.location.origin}/profile/${post.user_id}`
+    const url = `${window.location.origin}${profileHref}`
     if (navigator.share) {
       try { await navigator.share({ title: 'Frenvio', text: post.content, url }) } catch {}
       return
@@ -101,6 +101,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const authorName = author?.display_name || author?.username || 'Unknown'
   const authorUsername = author?.username || 'unknown'
   const verified = !!author?.verified
+  const profileHref = author?.username ? `/u/${author.username}` : `/profile/${post.user_id}`
 
   const likeBtn = useMemo(() => {
     const base = 'flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm'
@@ -113,15 +114,17 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
       <div className="flex gap-3">
-        <img
-          src={author?.avatar_url || avatarFallback(authorUsername)}
-          className="h-11 w-11 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
-          alt="avatar"
-        />
+        <Link to={profileHref} className="shrink-0">
+          <img
+            src={author?.avatar_url || avatarFallback(authorUsername)}
+            className="h-11 w-11 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
+            alt="avatar"
+          />
+        </Link>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
+            <Link to={profileHref} className="min-w-0 block hover:underline">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-bold truncate">{authorName}</span>
                 {verified && <ShieldCheck className="h-4 w-4 text-blue-500" />}
@@ -129,6 +132,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 <span className="text-sm text-slate-400">·</span>
                 <span className="text-sm text-slate-500 dark:text-slate-400">{formatRelativeTime(post.created_at)}</span>
               </div>
+            </Link>
             </div>
 
             <div className="flex items-center gap-2">
@@ -177,6 +181,11 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               <span>{reposts}</span>
             </button>
 
+            <button className={actionBtn} onClick={() => setCommentOpen(true)}>
+              <MessageCircle className="h-4 w-4" />
+              <span>Comment</span>
+            </button>
+
             <button className={actionBtn} onClick={handleShare}>
               <Share className="h-4 w-4" />
               <span>Share</span>
@@ -189,7 +198,62 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           </div>
         </div>
       </div>
-    </div>
+    
+      {commentOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setCommentOpen(false)}>
+          <div className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
+              <div className="font-bold">Comments</div>
+              <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => setCommentOpen(false)} aria-label="Close">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3 max-h-[55vh] overflow-auto">
+              <div className="flex gap-2">
+                <input
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Write a comment…"
+                  className="flex-1 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-2 outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                />
+                <button onClick={submitComment} className="rounded-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                  Post
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {(comments || []).map((c: any) => {
+                  const p = (c as any).profiles
+                  const name = p?.display_name || p?.username || 'User'
+                  const uname = p?.username || 'user'
+                  return (
+                    <div key={c.id} className="flex gap-3">
+                      <img
+                        src={p?.avatar_url || avatarFallback(uname)}
+                        className="h-9 w-9 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
+                        alt="avatar"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold">{name}</span>
+                          {p?.verified && <ShieldCheck className="h-4 w-4 text-blue-500" />}
+                          <span className="text-sm text-slate-500 dark:text-slate-400">@{uname}</span>
+                          <span className="text-xs text-slate-400">{formatRelativeTime(c.created_at)}</span>
+                        </div>
+                        <div className="text-slate-900 dark:text-slate-100 whitespace-pre-wrap break-words">{c.content}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {(comments || []).length === 0 && <div className="text-sm text-slate-500">No comments yet.</div>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+</div>
   )
 }
 

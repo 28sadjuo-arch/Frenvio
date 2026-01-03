@@ -47,6 +47,9 @@ export default function FollowButton({ targetUserId, size = 'sm' }: { targetUser
       } else {
         await supabase.from('follows').insert({ follower_id: user.id, following_id: targetUserId })
         setFollowing(true)
+        if (user.id !== targetUserId) {
+          try { await supabase.from('notifications').insert({ user_id: targetUserId, actor_id: user.id, type: 'follow' }) } catch {}
+        }
       }
     } finally {
       setBusy(false)
@@ -54,8 +57,8 @@ export default function FollowButton({ targetUserId, size = 'sm' }: { targetUser
   }
 
   return (
-    <button className={classes} disabled={busy || following === null} onClick={toggle}>
-      {following === null ? '—' : following ? 'Following' : 'Follow'}
+    <button className={classes} disabled={busy} onClick={toggle}>
+      {following === null ? 'Follow' : following ? 'Following' : 'Follow'}
     </button>
   )
 }

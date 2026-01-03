@@ -20,7 +20,7 @@ const SearchResults: React.FC<{ results: SearchResult[] }> = ({ results }) => {
       {results.map((u) => (
         <Link
           key={u.id}
-          to={`/profile/${u.id}`}
+          to={u.username ? `/u/${u.username}` : `/profile/${u.id}`}
           className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 hover:bg-slate-50 dark:hover:bg-slate-900/80 transition"
         >
           <div className="flex items-center gap-3 min-w-0">

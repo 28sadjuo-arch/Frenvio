@@ -50,7 +50,7 @@ const TopNav: React.FC = () => {
               {profile?.verified && (
                 <Link
                   to="/admin"
-                  className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
+                  className="hidden md:inline-flex p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
                   aria-label="Admin"
                 >
                   <ShieldCheck className="h-5 w-5" />
