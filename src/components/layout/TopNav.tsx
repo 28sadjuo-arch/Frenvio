@@ -1,16 +1,18 @@
 import React from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Bell, MessageCircle, Search, Settings, ShieldCheck } from 'lucide-react'
 import ThemeToggle from '../common/ThemeToggle'
 import { useAuth } from '../../contexts/AuthContext'
 
 const TopNav: React.FC = () => {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { user, profile, signOut } = useAuth()
+  const isHome = pathname === '/'
 
   return (
     <nav className="sticky top-0 z-50 border-b border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-950/80 backdrop-blur">
-      <div className="mx-auto max-w-3xl px-4 py-3 flex items-center justify-between">
+      <div className="mx-auto w-full max-w-6xl px-4 py-3 flex items-center justify-between">
         <Link to={user ? '/dashboard' : '/'} className="text-lg font-extrabold tracking-tight">
           Frenvio
         </Link>

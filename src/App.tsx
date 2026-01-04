@@ -47,7 +47,7 @@ function AppShell() {
   return (
     <div className={`${theme} min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors`}>
       <TopNav />
-      <main className="mx-auto max-w-3xl px-4 pt-4 pb-24 md:pb-10">
+      <main className="w-full pt-0 pb-24 md:pb-10">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />

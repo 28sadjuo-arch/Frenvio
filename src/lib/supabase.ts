@@ -17,6 +17,11 @@ export type Profile = {
   followers_count?: number | null
   following_count?: number | null
   verification_requested?: boolean | null
+  website?: string | null
+  instagram?: string | null
+  twitter?: string | null
+  telegram?: string | null
+  created_at?: string | null
 }
 
 export type Post = {

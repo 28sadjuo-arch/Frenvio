@@ -42,16 +42,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const profileHref = `/u/${authorUsername}`
 
   const [menuOpen, setMenuOpen] = useState(false)
-  const [commentOpen, setCommentOpen] = useState(false)
-  const [commentText, setCommentText] = useState('')
+  const [commentOpen, setOpen] = useState(false)
+  const [commentText, setText] = useState('')
 
   const [liked, setLiked] = useState<boolean | null>(null)
   const [reposted, setReposted] = useState<boolean | null>(null)
-  const [likes, setLikes] = useState<number>(post.likes || 0)
-  const [reposts, setReposts] = useState<number>(post.reposts || 0)
-
-  useEffect(() => setLikes(post.likes || 0), [post.likes])
-  useEffect(() => setReposts(post.reposts || 0), [post.reposts])
+  const [likes, setLikes] = useState<number>(0)
+  const [reposts, setReposts] = useState<number>(0)
+  const [commentsCount, setsCount] = useState<number>(0)
 
   useEffect(() => {
     let ignore = false
@@ -72,6 +70,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       if (ignore) return
       setLiked(!!l)
       setReposted(!!r)
+      await refreshCounts()
     }
     load()
     return () => {
@@ -80,6 +79,21 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   }, [user, post.id])
 
   const canDelete = user?.id === post.user_id
+
+  const refreshCounts = async () => {
+    try {
+      const [{ count: likeCount }, { count: repostCount }, { count: commentCount }] = await Promise.all([
+        supabase.from('post_likes').select('*', { count: 'exact', head: true }).eq('post_id', post.id),
+        supabase.from('post_reposts').select('*', { count: 'exact', head: true }).eq('post_id', post.id),
+        supabase.from('comments').select('*', { count: 'exact', head: true }).eq('post_id', post.id),
+      ])
+      setLikes(likeCount || 0)
+      setReposts(repostCount || 0)
+      setCommentsCount(commentCount || 0)
+    } catch {
+      // ignore
+    }
+  }
 
   const likeBtn = useMemo(() => {
     const base =
@@ -91,7 +105,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const actionBtn =
     'flex items-center gap-2 px-3 py-1.5 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm text-slate-600 dark:text-slate-300'
 
-  const { data: comments, refetch: refetchComments } = useQuery({
+  const { data: comments, refetch: refetchs } = useQuery({
     queryKey: ['comments', post.id],
     enabled: commentOpen,
     queryFn: async () => {
@@ -174,14 +188,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     qc.invalidateQueries({ queryKey: ['posts'] })
   }
 
-  const handleSubmitComment = async () => {
+  const handleSubmit = async () => {
     if (!user) return
     const text = commentText.trim()
     if (!text) return
-    setCommentText('')
+    setText('')
     await supabase.from('comments').insert({ post_id: post.id, user_id: user.id, content: text })
     await notify('comment')
-    await refetchComments()
+    await refetchs()
     qc.invalidateQueries({ queryKey: ['posts'] })
   }
 
@@ -212,7 +226,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
                 {user && user.id !== post.user_id && <FollowButton targetUserId={post.user_id} compact />}
                 <button
                   className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -269,9 +283,10 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 <span>{reposts}</span>
               </button>
 
-              <button className={actionBtn} onClick={() => setCommentOpen(true)}>
+              <button className={actionBtn} onClick={() => setOpen(true)}>
                 <MessageCircle className="h-4 w-4" />
-                <span>Comment</span>
+          <span className="text-xs">{commentsCount}</span>
+                <span></span>
               </button>
 
               <button className={actionBtn} onClick={handleShare}>
@@ -286,17 +301,17 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       {commentOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
-          onClick={() => setCommentOpen(false)}
+          onClick={() => setOpen(false)}
         >
           <div
             className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
-              <div className="font-bold">Comments</div>
+              <div className="font-bold">s</div>
               <button
                 className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
-                onClick={() => setCommentOpen(false)}
+                onClick={() => setOpen(false)}
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
@@ -307,13 +322,13 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               <div className="flex gap-2">
                 <input
                   value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
+                  onChange={(e) => setText(e.target.value)}
                   placeholder="Write a comment…"
                   className="flex-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-slate-100"
                 />
                 <button
                   className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50"
-                  onClick={handleSubmitComment}
+                  onClick={handleSubmit}
                   disabled={!commentText.trim()}
                 >
                   Post

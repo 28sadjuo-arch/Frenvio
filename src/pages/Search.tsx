@@ -24,7 +24,7 @@ const Search: React.FC = () => {
   })
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-3xl px-4 pt-4">
       <h1 className="text-xl font-extrabold tracking-tight mb-3">Search</h1>
 
       <div className="flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2">

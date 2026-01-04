@@ -58,7 +58,7 @@ export default function FollowButton({ targetUserId, size = 'sm' }: { targetUser
 
   return (
     <button className={classes} disabled={busy} onClick={toggle}>
-      {following === null ? 'Follow' : following ? 'Following' : 'Follow'}
+      {following === null ? 'Follow' : following ? 'Following' : '+ Follow'}
     </button>
   )
 }

@@ -45,7 +45,7 @@ const Dashboard: React.FC = () => {
   })
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-3xl px-4 pt-4">
       <div className="sticky top-[56px] md:top-[60px] z-40 -mx-4 px-4 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur border-b border-slate-200/60 dark:border-slate-800/60">
         <div className="flex">
           <button

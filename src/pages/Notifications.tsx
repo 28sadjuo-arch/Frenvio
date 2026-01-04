@@ -39,7 +39,7 @@ const Notifications: React.FC = () => {
   })
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-3xl px-4 pt-4">
       <h1 className="text-xl font-extrabold tracking-tight mb-3">Notifications</h1>
       {isLoading ? (
         <div className="text-sm text-slate-500">Loading…</div>
