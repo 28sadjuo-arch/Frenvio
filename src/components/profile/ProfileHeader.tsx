@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ShieldCheck, Settings } from 'lucide-react'
+import { Settings, MessageCircle } from 'lucide-react'
+import VerifiedBadge from '../common/VerifiedBadge'
 import { Profile } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import FollowButton from '../social/FollowButton'
@@ -45,7 +46,16 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
                 </Link>
               </>
             ) : (
-              <FollowButton targetUserId={profile.id} size="md" />
+              <>
+                <FollowButton targetUserId={profile.id} size="md" />
+                <Link
+                  to={`/chat?to=${profile.id}`}
+                  className="p-2 rounded-full border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  aria-label="Message"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                </Link>
+              </>
             )}
           </div>
         </div>
@@ -55,7 +65,7 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
             <h1 className="text-xl font-extrabold">
               {profile.display_name || profile.username || 'Unknown'}
             </h1>
-            {!!profile.verified && <ShieldCheck className="h-5 w-5 text-blue-500" />}
+            {!!profile.verified && <VerifiedBadge size={18} />}
           </div>
           <div className="text-slate-500 dark:text-slate-400">@{profile.username || 'unknown'}</div>
 

@@ -18,6 +18,7 @@ import Settings from './pages/Settings'
 import Chat from './pages/Chat'
 import Search from './pages/Search'
 import Notifications from './pages/Notifications'
+import PostPage from './pages/Post'
 import Admin from './pages/Admin'
 import About from './pages/About'
 import Blog from './pages/Blog'
@@ -47,7 +48,7 @@ function AppShell() {
   return (
     <div className={`${theme} min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors`}>
       <TopNav />
-      <main className="w-full pt-0 pb-24 md:pb-10">
+      <main className="w-full pt-0 pb-24">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
@@ -59,6 +60,8 @@ function AppShell() {
           <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
           <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+
+          <Route path="/p/:id" element={<ProtectedRoute><PostPage /></ProtectedRoute>} />
 
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
 

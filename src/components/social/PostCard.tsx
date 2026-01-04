@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Heart,
   MessageCircle,
   Repeat2,
   Share,
+  Copy,
+  Send,
   MoreHorizontal,
-  ShieldCheck,
   Trash2,
   Flag,
   X,
@@ -15,6 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Post, Profile, supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import FollowButton from './FollowButton'
+import VerifiedBadge from '../common/VerifiedBadge'
 import { formatRelativeTime } from '../../utilis/time'
 
 interface PostCardProps {
@@ -29,6 +31,7 @@ const avatarFallback = (username?: string | null) => {
 const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const { user } = useAuth()
   const qc = useQueryClient()
+  const navigate = useNavigate()
 
   const { data: author } = useQuery({
     queryKey: ['profile-lite', post.user_id],
@@ -42,6 +45,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const profileHref = `/u/${authorUsername}`
 
   const [menuOpen, setMenuOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const [commentOpen, setOpen] = useState(false)
   const [commentText, setText] = useState('')
 
@@ -97,13 +101,13 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const likeBtn = useMemo(() => {
     const base =
-      'flex items-center gap-2 px-3 py-1.5 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm'
+      'w-full flex items-center justify-center gap-2 px-3 py-2 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm'
     const color = liked ? 'text-pink-600' : 'text-slate-600 dark:text-slate-300'
     return `${base} ${color}`
   }, [liked])
 
   const actionBtn =
-    'flex items-center gap-2 px-3 py-1.5 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm text-slate-600 dark:text-slate-300'
+    'w-full flex items-center justify-center gap-2 px-3 py-2 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm text-slate-600 dark:text-slate-300'
 
   const { data: comments, refetch: refetchs } = useQuery({
     queryKey: ['comments', post.id],
@@ -214,19 +218,20 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Link to={profileHref} className="font-semibold truncate hover:underline">
-                    {author?.display_name || authorUsername}
-                  </Link>
-                  {author?.verified && <ShieldCheck className="h-4 w-4 text-blue-500" />}
-                  <Link to={profileHref} className="text-sm text-slate-500 dark:text-slate-400 hover:underline">
+                <Link to={profileHref} className="font-semibold truncate hover:underline inline-flex items-center gap-2">
+                  <span>{author?.display_name || authorUsername}</span>
+                  {author?.verified && <VerifiedBadge size={14} />}
+                </Link>
+                <div className="mt-0.5 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 flex-wrap">
+                  <Link to={profileHref} className="hover:underline">
                     @{authorUsername}
                   </Link>
+                  <span className="text-slate-400">·</span>
                   <span className="text-xs text-slate-400">{formatRelativeTime(post.created_at)}</span>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+              <div className="flex items-center gap-2">
                 {user && user.id !== post.user_id && <FollowButton targetUserId={post.user_id} compact />}
                 <button
                   className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -235,7 +240,6 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 >
                   <MoreHorizontal className="h-5 w-5" />
                 </button>
-
                 {menuOpen && (
                   <div className="relative">
                     <div className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-lg overflow-hidden z-10">
@@ -272,7 +276,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               </div>
             )}
 
-            <div className="mt-3 flex items-center justify-between">
+            <div className="mt-3 grid grid-cols-4 gap-1">
               <button className={likeBtn} onClick={handleLike}>
                 <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
                 <span>{likes}</span>
@@ -298,10 +302,64 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         </div>
       </div>
 
+      {shareOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
+          onClick={() => setShareOpen(false)}
+        >
+          <div
+            className="w-full md:max-w-sm bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
+              <div className="font-extrabold">Share</div>
+              <button
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
+                onClick={() => setShareOpen(false)}
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-3">
+              <button
+                onClick={async () => {
+                  await handleCopyPostLink()
+                  setShareOpen(false)
+                }}
+                className="w-full text-left px-4 py-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-3"
+              >
+                <Copy className="h-5 w-5" />
+                <div>
+                  <div className="font-semibold">Copy link</div>
+                  <div className="text-xs text-slate-500">Copy a link to this post</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/p/${post.id}`
+                  navigate(`/chat?share=${encodeURIComponent(url)}`)
+                  setShareOpen(false)
+                }}
+                className="mt-2 w-full text-left px-4 py-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-3"
+              >
+                <Send className="h-5 w-5" />
+                <div>
+                  <div className="font-semibold">Share to inbox</div>
+                  <div className="text-xs text-slate-500">Send this post in a message</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {commentOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
-          onClick={() => setOpen(false)}
+          onClick={() => setCommentOpen(false)}
         >
           <div
             className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
@@ -311,7 +369,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               <div className="font-bold">s</div>
               <button
                 className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
-                onClick={() => setOpen(false)}
+                onClick={() => setCommentOpen(false)}
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
@@ -350,7 +408,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold">{name}</span>
-                          {p?.verified && <ShieldCheck className="h-4 w-4 text-blue-500" />}
+                          {p?.verified && <VerifiedBadge size={14} />}
                           <span className="text-sm text-slate-500 dark:text-slate-400">@{uname}</span>
                           <span className="text-xs text-slate-400">{formatRelativeTime(c.created_at)}</span>
                         </div>

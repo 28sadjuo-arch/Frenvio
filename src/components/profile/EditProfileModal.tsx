@@ -40,6 +40,11 @@ export default function EditProfileModal({
     try {
       const cleanUsername = username.trim().replace(/^@+/, '').toLowerCase()
 
+      if (!cleanUsername || cleanUsername.length < 3 || !/^[a-z0-9_]+$/.test(cleanUsername)) {
+        alert('Username must be at least 3 characters and contain only letters, numbers, or _')
+        return
+      }
+
       let avatar_url = profile.avatar_url || null
       let banner_url = profile.banner_url || null
 
@@ -61,7 +66,8 @@ export default function EditProfileModal({
 
       const { error } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: user.id,
           username: cleanUsername,
           display_name: displayName || null,
           bio: bio || null,
@@ -71,8 +77,7 @@ export default function EditProfileModal({
           telegram: telegram || null,
           avatar_url,
           banner_url,
-        })
-        .eq('id', user.id)
+        }, { onConflict: 'id' })
 
       if (error) throw error
       onSaved()
@@ -86,8 +91,8 @@ export default function EditProfileModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-xl overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
           <div className="font-extrabold">Edit profile</div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900" aria-label="Close">
@@ -95,7 +100,7 @@ export default function EditProfileModal({
           </button>
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 overflow-y-auto">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-semibold">Name</label>
