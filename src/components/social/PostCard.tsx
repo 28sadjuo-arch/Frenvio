@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Post, Profile, supabase } from '../../lib/supabase'
+import RichText from '../common/RichText'
 import { useAuth } from '../../contexts/AuthContext'
 import FollowButton from './FollowButton'
 import VerifiedBadge from '../common/VerifiedBadge'
@@ -42,11 +43,11 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   })
 
   const authorUsername = author?.username || 'user'
-  const profileHref = `/u/${authorUsername}`
+  const profileHref = `/${authorUsername}`
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
-  const [commentOpen, setOpen] = useState(false)
+  const [commentOpen, setCommentOpen] = useState(false)
   const [commentText, setText] = useState('')
 
   const [liked, setLiked] = useState<boolean | null>(null)
@@ -107,7 +108,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   }, [liked])
 
   const actionBtn =
-    'w-full flex items-center justify-center gap-2 px-3 py-2 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm text-slate-600 dark:text-slate-300'
+    'flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm text-slate-600 dark:text-slate-300'
 
   const { data: comments, refetch: refetchs } = useQuery({
     queryKey: ['comments', post.id],
@@ -115,7 +116,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     queryFn: async () => {
       const { data } = await supabase
         .from('comments')
-        .select('*, profiles:profiles(*)')
+        .select('id, content, created_at, user_id, profiles:user_id (id, username, display_name, avatar_url, verified)')
         .eq('post_id', post.id)
         .order('created_at', { ascending: false })
       return data || []
@@ -172,9 +173,9 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const handleShare = async () => {
     try {
-      const url = `${window.location.origin}${profileHref}`
+      const url = `${window.location.origin}/p/${post.id}`
       await navigator.clipboard.writeText(url)
-      alert('Profile link copied!')
+      alert('Post link copied!')
     } catch {
       alert('Could not copy link.')
     }
@@ -205,7 +206,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   return (
     <>
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+      <div onClick={() => navigate(`/p/${post.id}`)} role="button" className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
         <div className="flex gap-3">
           <Link to={profileHref} className="shrink-0">
             <img
@@ -264,7 +265,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               </div>
             </div>
 
-            <p className="mt-2 whitespace-pre-wrap break-words">{post.content}</p>
+            <RichText className="mt-2" text={post.content} />
 
             {post.image_url && (
               <div className="mt-3">
@@ -276,24 +277,24 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               </div>
             )}
 
-            <div className="mt-3 grid grid-cols-4 gap-1">
-              <button className={likeBtn} onClick={handleLike}>
+            <div className="mt-3 flex items-center justify-between">
+              <button className={likeBtn} onClick={(e) => { e.stopPropagation(); handleLike() }}>
                 <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
                 <span>{likes}</span>
               </button>
 
-              <button className={actionBtn} onClick={handleRepost}>
+              <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleRepost() }}>
                 <Repeat2 className="h-4 w-4" />
                 <span>{reposts}</span>
               </button>
 
-              <button className={actionBtn} onClick={() => setOpen(true)}>
+              <button className={actionBtn} onClick={(e) => { e.stopPropagation(); setCommentOpen(true) }}>
                 <MessageCircle className="h-4 w-4" />
           <span className="text-xs">{commentsCount}</span>
                 <span></span>
               </button>
 
-              <button className={actionBtn} onClick={handleShare}>
+              <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleShare() }}>
                 <Share className="h-4 w-4" />
                 <span>Share</span>
               </button>

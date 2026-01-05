@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 
@@ -41,6 +41,29 @@ export default function FollowButton({
       ignore = true
     }
   }, [user, targetUserId])
+
+  useEffect(() => {
+    let active = true
+    async function loadFollowing() {
+      if (!user) return
+      const { data, error } = await supabase
+        .from('follows')
+        .select('id')
+        .eq('follower_id', user.id)
+        .eq('following_id', targetUserId)
+        .maybeSingle()
+      if (!active) return
+      if (error) {
+        setFollowing(false)
+        return
+      }
+      setFollowing(!!data)
+    }
+    loadFollowing()
+    return () => {
+      active = false
+    }
+  }, [user?.id, targetUserId])
 
   const toggle = async () => {
     if (!user || !targetUserId || user.id === targetUserId) return

@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '../../lib/supabase'
 import { Link } from 'react-router-dom'
-import { Settings, MessageCircle } from 'lucide-react'
+import { Settings, MessageCircle, Share2 } from 'lucide-react'
 import VerifiedBadge from '../common/VerifiedBadge'
+import RichText from '../common/RichText'
 import { Profile } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import FollowButton from '../social/FollowButton'
@@ -13,6 +16,29 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
   const { user } = useAuth()
   const isMe = user?.id === profile.id
   const [editOpen, setEditOpen] = useState(false)
+
+  const { data: followCounts } = useQuery({
+    queryKey: ['followCounts', profile.id],
+    queryFn: async () => {
+      const [{ count: following }, { count: followers }] = await Promise.all([
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.id),
+        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
+      ])
+      return { following: following || 0, followers: followers || 0 }
+    },
+  })
+
+
+  const copyProfileLink = async () => {
+    try {
+      const slug = profile.username || profile.id
+      const url = `${window.location.origin}/${slug}`
+      await navigator.clipboard.writeText(url)
+      alert('Profile link copied!')
+    } catch {
+      alert('Could not copy link.')
+    }
+  }
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
@@ -36,6 +62,9 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
                   className="px-4 py-2 rounded-full border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold"
                 >
                   Edit profile
+                </button>
+                <button onClick={copyProfileLink} className="p-2 rounded-full border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Copy profile link">
+                  <Share2 className="h-4 w-4" />
                 </button>
                 <Link
                   to="/settings"
@@ -72,8 +101,8 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
           {profile.bio && <p className="mt-2 whitespace-pre-wrap text-slate-800 dark:text-slate-200">{profile.bio}</p>}
 
           <div className="mt-3 flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300">
-            <span><b className="text-slate-900 dark:text-white">{profile.following_count ?? 0}</b> Following</span>
-            <span><b className="text-slate-900 dark:text-white">{profile.followers_count ?? 0}</b> Followers</span>
+            <span><b className="text-slate-900 dark:text-white">{followCounts?.following ?? 0}</b> Following</span>
+            <span><b className="text-slate-900 dark:text-white">{followCounts?.followers ?? 0}</b> Followers</span>
           </div>
         </div>
       </div>

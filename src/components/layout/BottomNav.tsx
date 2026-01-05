@@ -25,7 +25,7 @@ const BottomNav: React.FC = () => {
   // Don't show on auth page
   if (pathname.startsWith('/auth')) return null
 
-  const profileHref = profile?.username ? `/u/${profile.username}` : `/profile/${user.id}`
+  const profileHref = profile?.username ? `/${profile.username}` : `/profile/${user.id}`
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/90 backdrop-blur">

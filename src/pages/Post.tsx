@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import PostCard from '../components/social/PostCard'
+import CommentsThread from '../components/social/CommentsThread'
 
 const PostPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -23,6 +24,7 @@ const PostPage: React.FC = () => {
   return (
     <div className="mx-auto max-w-3xl px-4 pt-4">
       <PostCard post={post as any} />
+      <CommentsThread postId={id!} />
     </div>
   )
 }
