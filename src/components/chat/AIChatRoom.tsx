@@ -29,7 +29,7 @@ async function callApi(prompt: string): Promise<string> {
   return data?.text || data?.answer || data?.message || localAnswer(prompt)
 }
 
-const AIChatRoom: React.FC = () => {
+const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [messages, setMessages] = useState<AiMsg[]>([
     { id: 'w', role: 'assistant', content: 'Hi 👋 I’m Frenvio AI (beta). Ask me anything.', created_at: new Date().toISOString() },
   ])
@@ -87,7 +87,7 @@ const AIChatRoom: React.FC = () => {
         {loading && <div className="text-xs text-slate-500">Thinking…</div>}
       </div>
 
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800">
+      <div className="shrink-0 p-3 border-t border-slate-200 dark:border-slate-800">
         <div className="flex items-end gap-2">
           <textarea
             value={text}

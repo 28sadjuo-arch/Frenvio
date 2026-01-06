@@ -22,9 +22,10 @@ const QUICK_REACTIONS = ['❤️', '😂', '👍', '🔥', '😮', '😢']
 
 interface GroupChatRoomProps {
   groupId: string
+  onBack?: () => void
 }
 
-const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId }) => {
+const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId, onBack }) => {
   const { user } = useAuth()
   const [group, setGroup] = useState<any>(null)
   const [membersCount, setMembersCount] = useState<number>(0)
@@ -37,6 +38,59 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId }) => {
   const listRef = useRef<HTMLDivElement | null>(null)
   const [reactionTarget, setReactionTarget] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const [promoteOpen, setPromoteOpen] = useState(false)
+  const [memberQuery, setMemberQuery] = useState('')
+  const [memberResults, setMemberResults] = useState<any[]>([])
+  const [loadingMembers, setLoadingMembers] = useState(false)
+
+  const leaveGroup = async () => {
+    if (!user) return
+    const ok = confirm('Leave this group?')
+    if (!ok) return
+    await supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', user.id)
+    onBack?.()
+  }
+
+  const searchMembers = async (q: string) => {
+    if (!q.trim()) {
+      setMemberResults([])
+      return
+    }
+    setLoadingMembers(true)
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, verified')
+      .ilike('username', `%${q}%`)
+      .limit(10)
+    setMemberResults(data || [])
+    setLoadingMembers(false)
+  }
+
+  const addMember = async (profileId: string) => {
+    if (!user) return
+    const { error } = await supabase.from('group_members').insert({ group_id: groupId, user_id: profileId, role: 'member' })
+    if (error) alert('Could not add member.')
+    else {
+      alert('Member added.')
+      setAddOpen(false)
+      setMemberQuery('')
+      setMemberResults([])
+    }
+  }
+
+  const promoteMember = async (profileId: string) => {
+    if (!user) return
+    const { error } = await supabase.from('group_members').update({ role: 'admin' }).eq('group_id', groupId).eq('user_id', profileId)
+    if (error) alert('Could not promote member.')
+    else {
+      alert('Promoted to admin.')
+      setPromoteOpen(false)
+      setMemberQuery('')
+      setMemberResults([])
+    }
+  }
+
 
   const roomKey = useMemo(() => `group:${groupId}`, [groupId])
 
@@ -223,8 +277,11 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId }) => {
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col h-[70vh] md:h-[78vh]">
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <div className="shrink-0 px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
+          {onBack && (
+            <button onClick={onBack} className="md:hidden p-2 -ml-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Back">←</button>
+          )}
           <div className="font-extrabold">{title}</div>
           {isAdmin && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">Admin</span>}
         </div>
@@ -238,16 +295,44 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId }) => {
             </button>
             {menuOpen && (
               <div className="absolute right-0 mt-2 w-52 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-lg overflow-hidden z-10">
-                <div className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                  Group options coming next.
-                </div>
+                <button
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    leaveGroup()
+                  }}
+                >
+                  Leave group
+                </button>
+                {isAdmin && (
+                  <>
+                    <button
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        setAddOpen(true)
+                      }}
+                    >
+                      Add member
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        setPromoteOpen(true)
+                      }}
+                    >
+                      Promote admin
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      <div ref={listRef} className="p-4 space-y-3 overflow-y-auto flex-1">
+      <div ref={listRef} className="flex-1 min-h-0 p-4 space-y-3 overflow-y-auto">
         {messages.map((m: any) => {
           const mine = m.sender_id === user?.id
           return (
@@ -309,7 +394,7 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId }) => {
         {typingUser && <TypingIndicator />}
       </div>
 
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800">
+      <div className="shrink-0 p-3 border-t border-slate-200 dark:border-slate-800">
         <div className="flex items-end gap-2">
           <label className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title="Send image">
             <input
@@ -354,6 +439,84 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId }) => {
             <Send className="h-4 w-4" />
           </button>
         </div>
+
+      {addOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setAddOpen(false)}>
+          <div className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 font-bold">Add member</div>
+            <div className="p-4 space-y-3">
+              <input
+                value={memberQuery}
+                onChange={(e) => {
+                  setMemberQuery(e.target.value)
+                  searchMembers(e.target.value)
+                }}
+                placeholder="Search username..."
+                className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950"
+              />
+              {loadingMembers && <div className="text-sm text-slate-500">Searching…</div>}
+              <div className="space-y-2">
+                {memberResults.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img src={p.avatar_url || '/default-avatar.svg'} className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-slate-800" alt="" />
+                      <div className="min-w-0">
+                        <div className="font-bold truncate">{p.display_name || p.username} {p.verified ? <span className="ml-1 inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600 text-white text-[10px]">✓</span> : null}</div>
+                        <div className="text-xs text-slate-500 truncate">@{p.username}</div>
+                      </div>
+                    </div>
+                    <button className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold" onClick={() => addMember(p.id)}>
+                      Add
+                    </button>
+                  </div>
+                ))}
+                {!loadingMembers && memberQuery.trim().length > 0 && memberResults.length === 0 && (
+                  <div className="text-sm text-slate-500">No users found.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {promoteOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setPromoteOpen(false)}>
+          <div className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 font-bold">Promote admin</div>
+            <div className="p-4 space-y-3">
+              <input
+                value={memberQuery}
+                onChange={(e) => {
+                  setMemberQuery(e.target.value)
+                  searchMembers(e.target.value)
+                }}
+                placeholder="Search username..."
+                className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950"
+              />
+              {loadingMembers && <div className="text-sm text-slate-500">Searching…</div>}
+              <div className="space-y-2">
+                {memberResults.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img src={p.avatar_url || '/default-avatar.svg'} className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-slate-800" alt="" />
+                      <div className="min-w-0">
+                        <div className="font-bold truncate">{p.display_name || p.username}</div>
+                        <div className="text-xs text-slate-500 truncate">@{p.username}</div>
+                      </div>
+                    </div>
+                    <button className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold" onClick={() => promoteMember(p.id)}>
+                      Promote
+                    </button>
+                  </div>
+                ))}
+                {!loadingMembers && memberQuery.trim().length > 0 && memberResults.length === 0 && (
+                  <div className="text-sm text-slate-500">No users found.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   )

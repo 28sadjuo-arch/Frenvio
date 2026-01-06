@@ -171,7 +171,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ otherUserId, initialMessage = '
       message_type: payload.message_type || 'text',
       media_url: payload.media_url || null,
     })
-    if (error) alert('Could not send message.')
+    if (error) alert('Could not send message. Please run SUPABASE_CHAT_STEP.sql and create storage bucket chat-media.')
     setNewMessage('')
   }
 
@@ -239,14 +239,28 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ otherUserId, initialMessage = '
     const username = other?.username ? '@' + other.username : ''
     const lastSeen = other?.last_seen_at ? formatRelativeTime(other.last_seen_at) : ''
     return (
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <button
+      <div className="shrink-0 px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="md:hidden p-2 -ml-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+              aria-label="Back"
+              title="Back"
+            >
+              ←
+            </button>
+          )}
+          <button
           onClick={() => other?.username && navigate('/' + other.username)}
           className="text-left"
           title="View profile"
         >
           <div className="flex items-center gap-2">
-            <div className="font-extrabold leading-tight">{name}</div>
+            <img src={other?.avatar_url || '/default-avatar.svg'} alt="" className="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-slate-800" />
+            <div>
+              <div className="flex items-center gap-1">
+                <div className="font-extrabold leading-tight">{name}</div>
             {other?.verified && (
               <span
                 className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600 text-white text-[10px] leading-none"
@@ -263,6 +277,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ otherUserId, initialMessage = '
             {isOnline && <span className="inline-block h-2 w-2 rounded-full bg-green-500" />}
           </div>
         </button>
+        </div>
 
         <div className="relative">
           <button
@@ -326,7 +341,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ otherUserId, initialMessage = '
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col h-[70vh] md:h-[78vh]">
       <Header />
 
-      <div ref={listRef} className="p-4 space-y-3 overflow-y-auto flex-1">
+      <div ref={listRef} className="flex-1 min-h-0 p-4 space-y-3 overflow-y-auto">
         {messages.map((m: any) => {
           const mine = m.sender_id === user?.id
           return (
@@ -398,7 +413,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ otherUserId, initialMessage = '
         {typingUser && <TypingIndicator />}
       </div>
 
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800">
+      <div className="shrink-0 p-3 border-t border-slate-200 dark:border-slate-800">
         <div className="flex items-end gap-2">
           <label className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title="Send image">
             <input

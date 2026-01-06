@@ -226,10 +226,15 @@ const Chat: React.FC = () => {
     </button>
   )
 
-  return (
-    <div className="grid md:grid-cols-4 gap-4">
+  
+return (
+    <div className="flex h-[calc(100vh-56px-64px)] md:h-auto gap-4">
       {/* Left panel */}
-      <div className="md:col-span-1 space-y-3">
+      <div
+        className={`w-full md:w-[380px] md:shrink-0 space-y-3 ${
+          selected ? 'hidden md:block' : 'block'
+        }`}
+      >
         <div className="flex gap-2">
           <TabBtn value="inbox" label="Inbox" />
           <TabBtn value="groups" label="Groups" />
@@ -250,34 +255,42 @@ const Chat: React.FC = () => {
                 const uname = o.username ? '@' + o.username : ''
                 const last = it.last
                 const preview =
-                  last.message_type === 'image'
+                  last?.message_type === 'image'
                     ? '📷 Photo'
-                    : last.message_type === 'audio'
+                    : last?.message_type === 'audio'
                       ? '🎤 Voice message'
-                      : (last.content || '').slice(0, 40)
+                      : (last?.content || '').slice(0, 60) || 'Say hi 👋'
+                const time = last?.created_at ? formatRelativeTime(last.created_at) : ''
                 return (
                   <button
-                    key={it.room_id}
-                    onClick={() => setSelected({ kind: 'dm', otherUserId: o.id })}
+                    key={it.roomId}
+                    onClick={() => setSelected({ kind: 'dm', otherUserId: it.otherId })}
                     className={`w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-800 ${
-                      selected?.kind === 'dm' && selected.otherUserId === o.id ? 'bg-slate-50 dark:bg-slate-800' : ''
+                      selected?.kind === 'dm' && selected.otherUserId === it.otherId ? 'bg-slate-50 dark:bg-slate-800' : ''
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <div className="font-bold truncate">{name}</div>
-                          {o.verified && <VerifiedBadge />}
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={o.avatar_url || '/default-avatar.svg'}
+                        className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-slate-800"
+                        alt=""
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0 flex items-center gap-1">
+                            <div className="font-bold truncate">{name}</div>
+                            {o.verified ? <VerifiedBadge /> : null}
+                            <div className="text-xs text-slate-500 truncate ml-1">{uname}</div>
+                          </div>
+                          <div className="text-xs text-slate-500">{time}</div>
                         </div>
-                        <div className="text-xs text-slate-500 truncate">{uname}</div>
+                        <div className="mt-0.5 flex items-center justify-between gap-2">
+                          <div className="text-xs text-slate-600 dark:text-slate-300 truncate">{preview}</div>
+                          {it.unread ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">New</span>
+                          ) : null}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-slate-500 whitespace-nowrap">
-                        {formatRelativeTime(last.created_at)}
-                      </div>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <div className="text-xs text-slate-600 dark:text-slate-300 truncate">{preview}</div>
-                      {it.unread > 0 && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">{it.unread}</span>}
                     </div>
                   </button>
                 )
@@ -286,37 +299,37 @@ const Chat: React.FC = () => {
           </div>
         )}
 
-        {/* Groups list */}
+        {/* Groups */}
         {tab === 'groups' && (
           <div className="space-y-3">
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
-              <button
-                onClick={() => setCreateOpen(true)}
-                className="w-full px-3 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 flex items-center justify-center gap-2"
-              >
-                <Plus className="h-4 w-4" /> Create group
-              </button>
-
-              <div className="mt-3 flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2">
-                <Search className="h-4 w-4 text-slate-500" />
-                <input
-                  value={groupSearch}
-                  onChange={(e) => setGroupSearch(e.target.value)}
-                  placeholder="Search groups by name…"
-                  className="flex-1 bg-transparent text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
-                />
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+              <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div className="text-sm font-bold">Groups</div>
+                <button
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-600 text-white text-sm font-semibold"
+                  onClick={() => setCreateOpen(true)}
+                >
+                  <Plus className="h-4 w-4" /> Create
+                </button>
               </div>
 
-              {groupSearch.trim() && (
-                <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                  {groupSearchResults.length === 0 ? (
-                    <div className="p-3 text-sm text-slate-600 dark:text-slate-300">No groups found.</div>
-                  ) : (
-                    groupSearchResults.map((g: any) => (
-                      <div key={g.id} className="p-3 flex items-center justify-between gap-2 border-b last:border-b-0 border-slate-200 dark:border-slate-800">
+              <div className="p-3 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2">
+                  <Search className="h-4 w-4 text-slate-500" />
+                  <input
+                    value={groupSearch}
+                    onChange={(e) => setGroupSearch(e.target.value)}
+                    className="w-full bg-transparent outline-none text-sm"
+                    placeholder="Search groups to join..."
+                  />
+                </div>
+                {groupSearch.trim().length >= 2 && groupSearchResults.length > 0 && (
+                  <div className="mt-2 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                    {groupSearchResults.map((g: any) => (
+                      <div key={g.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900">
                         <div className="min-w-0">
                           <div className="font-bold truncate">{g.name}</div>
-                          <div className="text-xs text-slate-500">Created {formatRelativeTime(g.created_at)}</div>
+                          <div className="text-xs text-slate-500">Tap join to enter</div>
                         </div>
                         <button
                           className="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-sm font-semibold"
@@ -325,13 +338,11 @@ const Chat: React.FC = () => {
                           Join
                         </button>
                       </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
               <div className="p-3 border-b border-slate-200 dark:border-slate-800 text-sm font-bold">Your groups</div>
               <div className="divide-y divide-slate-200 dark:divide-slate-800">
                 {myGroups.length === 0 && (
@@ -340,7 +351,9 @@ const Chat: React.FC = () => {
                 {myGroups.map((it: any) => {
                   const g = it.group
                   const latest = it.latest
-                  const preview = latest ? (latest.message_type === 'image' ? '📷 Photo' : latest.message_type === 'audio' ? '🎤 Voice' : (latest.content || '').slice(0, 40)) : 'No messages yet'
+                  const preview = latest
+                    ? (latest.message_type === 'image' ? '📷 Photo' : latest.message_type === 'audio' ? '🎤 Voice' : (latest.content || '').slice(0, 50))
+                    : 'No messages yet'
                   return (
                     <button
                       key={g.id}
@@ -350,8 +363,10 @@ const Chat: React.FC = () => {
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="font-bold">{g.name}</div>
-                        {it.unread ? <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">New</span> : null}
+                        <div className="font-bold truncate">{g.name}</div>
+                        {it.unread ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">New</span>
+                        ) : null}
                       </div>
                       <div className="mt-1 text-xs text-slate-600 dark:text-slate-300 truncate">{preview}</div>
                     </button>
@@ -361,23 +376,42 @@ const Chat: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Frenvio AI placeholder */}
+        {tab === 'ai' && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+            <div className="p-3 border-b border-slate-200 dark:border-slate-800 text-sm font-bold">Frenvio AI</div>
+            <div className="p-4 text-sm text-slate-600 dark:text-slate-300">Coming soon.</div>
+            <button
+              className="m-4 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold"
+              onClick={() => setSelected({ kind: 'ai' })}
+            >
+              Open chat
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Right panel */}
-      <div className="md:col-span-3">
+      <div className={`flex-1 min-w-0 ${selected ? 'block' : 'hidden md:block'}`}>
         {selected?.kind === 'dm' ? (
-          <DMChatRoom otherUserId={selected.otherUserId} initialMessage={shareParam ? decodeURIComponent(shareParam) : ''} />
+          <DMChatRoom
+            otherUserId={selected.otherUserId}
+            initialMessage={shareParam ? decodeURIComponent(shareParam) : ''}
+            onBack={() => setSelected(null)}
+          />
         ) : selected?.kind === 'group' ? (
-          <GroupChatRoom groupId={selected.groupId} />
+          <GroupChatRoom groupId={selected.groupId} onBack={() => setSelected(null)} />
         ) : selected?.kind === 'ai' ? (
-          <AIChatRoom />
+          <AIChatRoom onBack={() => setSelected(null)} />
         ) : (
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-sm text-slate-600 dark:text-slate-300">
+          <div className="h-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-sm text-slate-600 dark:text-slate-300 flex items-center justify-center">
             Select a conversation to start chatting.
           </div>
         )}
       </div>
 
+      {createOpen && (
       {createOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setCreateOpen(false)}>
           <div
