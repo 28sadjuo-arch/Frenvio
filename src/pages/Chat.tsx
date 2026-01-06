@@ -412,7 +412,6 @@ return (
       </div>
 
       {createOpen && (
-      {createOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setCreateOpen(false)}>
           <div
             className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
