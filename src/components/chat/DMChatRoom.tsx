@@ -1,11 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Image as ImageIcon, Mic, MoreVertical, Send } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { uploadChatMedia } from '../../lib/storage'
 import { formatRelativeTime } from '../../utilis/time'
-import { Image as ImageIcon, Mic, MoreVertical, Send } from 'lucide-react'
 import TypingIndicator from './TypingIndicator'
+
+type ProfileLite = {
+  id: string
+  username: string | null
+  display_name: string | null
+  avatar_url: string | null
+  verified: boolean | null
+  last_seen_at?: string | null
+}
 
 type Msg = {
   id: string
@@ -15,70 +24,117 @@ type Msg = {
   content: string
   message_type?: 'text' | 'image' | 'audio'
   media_url?: string | null
-  read_at?: string | null
   created_at: string
-}
-
-interface DMChatRoomProps {
-  otherUserId: string
-  initialMessage?: string
+  read_at?: string | null
 }
 
 function roomIdFor(a: string, b: string) {
   return [a, b].sort().join(':')
 }
 
-const QUICK_REACTIONS = ['❤️', '😂', '👍', '🔥', '😮', '😢']
+function isImageUrl(url: string) {
+  return /\.(png|jpe?g|gif|webp)$/i.test(url) || url.includes('image')
+}
 
-const DMChatRoom: React.FC<DMChatRoomProps> = ({ otherUserId, initialMessage = '' }) => {
-  const { user } = useAuth()
+export default function DMChatRoom({
+  otherUserId,
+  initialText = '',
+  onBack,
+}: {
+  otherUserId: string
+  initialText?: string
+  onBack?: () => void
+}) {
   const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const [other, setOther] = useState<ProfileLite | null>(null)
   const [messages, setMessages] = useState<Msg[]>([])
-  const [newMessage, setNewMessage] = useState(initialMessage)
-  const [other, setOther] = useState<any>(null)
-  const [isOnline, setIsOnline] = useState(false)
-  const [typingUser, setTypingUser] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [text, setText] = useState(initialText)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [blockConfirm, setBlockConfirm] = useState(false)
-  const [recording, setRecording] = useState(false)
-  const recorderRef = useRef<MediaRecorder | null>(null)
-  const recordChunksRef = useRef<BlobPart[]>([])
+
   const listRef = useRef<HTMLDivElement | null>(null)
 
   const roomId = useMemo(() => (user ? roomIdFor(user.id, otherUserId) : ''), [user, otherUserId])
 
+  const name = other?.display_name || other?.username || 'User'
+  const username = other?.username ? `@${other.username}` : ''
+
+  // Load other profile
   useEffect(() => {
     if (!user) return
-    // Load other profile
     supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url, verified, last_seen_at')
       .eq('id', otherUserId)
       .maybeSingle()
-      .then(({ data }) => setOther(data || null))
+      .then(({ data }) => setOther((data as any) || null))
   }, [user, otherUserId])
 
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
-      if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
+      if (!listRef.current) return
+      listRef.current.scrollTop = listRef.current.scrollHeight
     })
   }
 
+  // Load messages + realtime
   useEffect(() => {
-    let ignore = false
-    async function load() {
-      if (!user || !roomId) return
-      const { data } = await supabase
+    if (!user || !roomId) return
+    let isMounted = true
+
+    const load = async () => {
+      setLoading(true)
+      const { data, error } = await supabase
         .from('messages')
-        .select('id, room_id, sender_id, receiver_id, content, message_type, media_url, read_at, created_at')
+        .select('*')
         .eq('room_id', roomId)
         .order('created_at', { ascending: true })
-      if (!ignore) {
-        setMessages((data as any) || [])
-        scrollToBottom()
-      }
 
-      // Mark messages as read (only messages sent to me)
+      if (!isMounted) return
+      if (!error) setMessages((data as any) || [])
+      setLoading(false)
+      scrollToBottom()
+    }
+
+    load()
+
+    const channel = supabase
+      .channel(`dm:${roomId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
+        (payload) => {
+          const row = payload.new as any
+          if (!row?.id) return
+          setMessages((prev) => {
+            // upsert into list
+            const idx = prev.findIndex((m) => m.id === row.id)
+            if (idx >= 0) {
+              const copy = [...prev]
+              copy[idx] = { ...(copy[idx] as any), ...(row as any) }
+              return copy
+            }
+            return [...prev, row]
+          })
+          scrollToBottom()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      isMounted = false
+      supabase.removeChannel(channel)
+    }
+  }, [user, roomId])
+
+  // Mark messages as read when opened
+  useEffect(() => {
+    if (!user || !roomId) return
+    const markRead = async () => {
+      // set read_at for messages from other to me
       await supabase
         .from('messages')
         .update({ read_at: new Date().toISOString() })
@@ -86,400 +142,251 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ otherUserId, initialMessage = '
         .eq('receiver_id', user.id)
         .is('read_at', null)
     }
-    load()
+    markRead()
+  }, [user, roomId])
 
+  const sendText = async () => {
     if (!user || !roomId) return
-    const channel = supabase
-      .channel('dm:' + roomId, { config: { presence: { key: user.id } } })
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
-        (payload) => {
-          const row: any = payload.new
-          setMessages((prev) => [...prev, row])
-          scrollToBottom()
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
-        (payload) => {
-          const row: any = payload.new
-          setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...(m as any), ...(row as any) } : m)))
-        }
-      )
-      .on('broadcast', { event: 'typing' }, (payload) => {
-        const { userId, isTyping } = payload.payload as any
-        if (userId && userId !== user.id) setTypingUser(isTyping ? userId : null)
-      })
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState() as any
-        const online = !!state?.[otherUserId]?.length
-        setIsOnline(online)
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({ user_id: user.id, online_at: new Date().toISOString() })
-        }
-      })
-
-    return () => {
-      ignore = true
-      supabase.removeChannel(channel)
-    }
-  }, [user, roomId, otherUserId])
-
-  // Update my last seen periodically
-  useEffect(() => {
-    if (!user) return
-    const tick = async () => {
-      await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id)
-    }
-    tick()
-    const t = setInterval(tick, 30_000)
-    return () => clearInterval(t)
-  }, [user])
-
-  // typing emit (debounced)
-  useEffect(() => {
-    if (!user || !roomId) return
-    const channel = supabase.channel('typing:' + roomId)
-    // channel is cheap; use broadcast without presence
-    channel.subscribe()
-    let t: any
-    if (newMessage.trim().length > 0) {
-      channel.send({ type: 'broadcast', event: 'typing', payload: { userId: user.id, isTyping: true } })
-      t = setTimeout(() => {
-        channel.send({ type: 'broadcast', event: 'typing', payload: { userId: user.id, isTyping: false } })
-      }, 1200)
-    } else {
-      channel.send({ type: 'broadcast', event: 'typing', payload: { userId: user.id, isTyping: false } })
-    }
-    return () => {
-      if (t) clearTimeout(t)
-      supabase.removeChannel(channel)
-    }
-  }, [newMessage, user, roomId])
-
-  const sendMessage = async (payload: Partial<Msg>) => {
-    if (!user || !roomId) return
+    const content = text.trim()
+    if (!content) return
+    setSending(true)
     const { error } = await supabase.from('messages').insert({
       room_id: roomId,
       sender_id: user.id,
       receiver_id: otherUserId,
-      content: payload.content || '',
-      message_type: payload.message_type || 'text',
-      media_url: payload.media_url || null,
+      content,
+      message_type: 'text',
     })
-    if (error) alert('Could not send message. Please run SUPABASE_CHAT_STEP.sql and create storage bucket chat-media.')
-    setNewMessage('')
+    setSending(false)
+    if (!error) setText('')
   }
 
-  const onSendText = async () => {
-    const content = newMessage.trim()
-    if (!content) return
-    await sendMessage({ content, message_type: 'text' })
-  }
-
-  const onPickImage = async (file: File) => {
+  const sendMedia = async (file: File, type: 'image' | 'audio') => {
     if (!user || !roomId) return
+    setSending(true)
     try {
       const url = await uploadChatMedia(file, roomId)
-      await sendMessage({ message_type: 'image', media_url: url, content: '' })
-    } catch {
-      alert('Image upload failed. Make sure Storage bucket "chat-media" exists and is public.')
+      await supabase.from('messages').insert({
+        room_id: roomId,
+        sender_id: user.id,
+        receiver_id: otherUserId,
+        content: '',
+        message_type: type,
+        media_url: url,
+      })
+    } finally {
+      setSending(false)
     }
   }
 
+  const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    await sendMedia(f, 'image')
+  }
+
+  const onPickAudio = async (blob: Blob) => {
+    const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type || 'audio/webm' })
+    await sendMedia(file, 'audio')
+  }
+
+  const recordRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<BlobPart[]>([])
+  const [recording, setRecording] = useState(false)
+
   const startRecording = async () => {
-    if (recording) return
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
-      recorderRef.current = recorder
-      recordChunksRef.current = []
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) recordChunksRef.current.push(e.data)
-      }
-      recorder.onstop = async () => {
+      const rec = new MediaRecorder(stream)
+      chunksRef.current = []
+      rec.ondataavailable = (ev) => chunksRef.current.push(ev.data)
+      rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop())
-        const blob = new Blob(recordChunksRef.current, { type: 'audio/webm' })
-        const file = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' })
-        try {
-          const url = await uploadChatMedia(file, roomId)
-          await sendMessage({ message_type: 'audio', media_url: url, content: '' })
-        } catch {
-          alert('Voice upload failed. Make sure Storage bucket "chat-media" exists and is public.')
-        }
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        if (blob.size > 0) await onPickAudio(blob)
       }
-      recorder.start()
+      recordRef.current = rec
       setRecording(true)
+      rec.start()
     } catch {
-      alert('Microphone permission denied.')
+      // ignore
     }
   }
 
   const stopRecording = () => {
-    if (!recorderRef.current) return
-    recorderRef.current.stop()
-    recorderRef.current = null
-    setRecording(false)
+    try {
+      recordRef.current?.stop()
+    } catch {
+      // ignore
+    } finally {
+      recordRef.current = null
+      setRecording(false)
+    }
   }
 
   const blockUser = async () => {
     if (!user) return
     await supabase.from('blocks').insert({ blocker_id: user.id, blocked_id: otherUserId })
-    setBlockConfirm(false)
     setMenuOpen(false)
-    navigate('/chat')
+    onBack?.()
   }
 
-  const Header = () => {
-    const name = other?.display_name || other?.username || 'User'
-    const username = other?.username ? '@' + other.username : ''
-    const lastSeen = other?.last_seen_at ? formatRelativeTime(other.last_seen_at) : ''
-    return (
-      <div className="shrink-0 px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {onBack && (
+  const lastSeenLabel = other?.last_seen_at ? formatRelativeTime(other.last_seen_at) : null
+
+  return (
+    <div className="flex h-[calc(100vh-56px-64px)] flex-col bg-white dark:bg-slate-950">
+      {/* Header */}
+      <div className="shrink-0 border-b border-slate-200 dark:border-slate-800 px-3 py-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {onBack ? (
             <button
               onClick={onBack}
-              className="md:hidden p-2 -ml-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="md:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900"
               aria-label="Back"
-              title="Back"
             >
               ←
             </button>
-          )}
+          ) : null}
+
           <button
-          onClick={() => other?.username && navigate('/' + other.username)}
-          className="text-left"
-          title="View profile"
-        >
-          <div className="flex items-center gap-2">
-            <img src={other?.avatar_url || '/default-avatar.svg'} alt="" className="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-slate-800" />
-            <div>
-              <div className="flex items-center gap-1">
-                <div className="font-extrabold leading-tight">{name}</div>
-            {other?.verified && (
-              <span
-                className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600 text-white text-[10px] leading-none"
-                aria-label="Verified"
-              >
-                ✓
-              </span>
-            )}
-          </div>
-          <div className="text-xs text-slate-500 flex items-center gap-2">
-            <span>{username}</span>
-            <span>•</span>
-            <span>{isOnline ? 'Online' : lastSeen ? `Last seen ${lastSeen}` : 'Offline'}</span>
-            {isOnline && <span className="inline-block h-2 w-2 rounded-full bg-green-500" />}
-          </div>
-        </button>
+            onClick={() => {
+              if (other?.username) navigate(`/${other.username}`)
+              else navigate(`/profile/${otherUserId}`)
+            }}
+            className="flex items-center gap-2 min-w-0"
+          >
+            <img
+              src={other?.avatar_url || '/default-avatar.svg'}
+              className="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-slate-800"
+              alt=""
+            />
+            <div className="min-w-0 text-left">
+              <div className="flex items-center gap-1 font-extrabold leading-tight truncate">
+                <span className="truncate">{name}</span>
+                {other?.verified ? (
+                  <span
+                    className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600 text-white text-[10px] leading-none"
+                    aria-label="Verified"
+                  >
+                    ✓
+                  </span>
+                ) : null}
+              </div>
+              <div className="text-xs text-slate-500 truncate">
+                {username}
+                {lastSeenLabel ? ` • Last seen ${lastSeenLabel}` : ''}
+              </div>
+            </div>
+          </button>
         </div>
 
         <div className="relative">
           <button
-            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
             onClick={() => setMenuOpen((s) => !s)}
-            aria-label="More"
+            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900"
+            aria-label="Menu"
           >
             <MoreVertical className="h-5 w-5" />
           </button>
-          {menuOpen && (
-            <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-lg overflow-hidden z-10">
+
+          {menuOpen ? (
+            <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-lg overflow-hidden z-50">
               <button
+                onClick={blockUser}
                 className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
-                onClick={() => setBlockConfirm(true)}
               >
                 Block user
               </button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
-    )
-  }
 
-  const [reactionTarget, setReactionTarget] = useState<string | null>(null)
+      {/* Messages */}
+      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-2">
+        {loading ? (
+          <div className="text-sm text-slate-500">Loading…</div>
+        ) : null}
 
-  const addReaction = async (messageId: string, emoji: string) => {
-    if (!user) return
-    await supabase.from('message_reactions').upsert({ message_id: messageId, user_id: user.id, emoji })
-    setReactionTarget(null)
-  }
+        {!loading && messages.length === 0 ? (
+          <div className="text-sm text-slate-500">No messages yet. Say hi 👋</div>
+        ) : null}
 
-  const { data: reactions } = useMemo(() => {
-    return { data: null }
-  }, [])
-
-  useEffect(() => {
-    // light: fetch reactions once per change
-    if (!roomId) return
-    const fetchReactions = async () => {
-      const { data } = await supabase
-        .from('message_reactions')
-        .select('id, message_id, user_id, emoji')
-        .in(
-          'message_id',
-          messages.map((m) => m.id).slice(-50)
-        )
-      // attach
-      if (!data) return
-      const map: Record<string, string[]> = {}
-      data.forEach((r: any) => {
-        map[r.message_id] = map[r.message_id] || []
-        map[r.message_id].push(r.emoji)
-      })
-      setMessages((prev) => prev.map((m) => ({ ...(m as any), _reactions: map[m.id] || [] })))
-    }
-    fetchReactions()
-  }, [messages.length, roomId])
-
-  return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col h-[70vh] md:h-[78vh]">
-      <Header />
-
-      <div ref={listRef} className="flex-1 min-h-0 p-4 space-y-3 overflow-y-auto">
-        {messages.map((m: any) => {
-          const mine = m.sender_id === user?.id
+        {messages.map((m) => {
+          const mine = user?.id === m.sender_id
           return (
             <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-              <div className="max-w-[86%]">
-                <button
-                  className={`w-full text-left rounded-2xl px-4 py-2 ${
-                    mine
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100'
-                  }`}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    setReactionTarget(m.id)
-                  }}
-                  onPointerDown={() => {
-                    const id = m.id
-                    const t = setTimeout(() => setReactionTarget(id), 450)
-                    const clear = () => clearTimeout(t)
-                    window.addEventListener('pointerup', clear, { once: true })
-                    window.addEventListener('pointercancel', clear, { once: true })
-                  }}
-                >
-                  {m.message_type === 'image' && m.media_url ? (
-                    <img src={m.media_url} alt="sent" className="rounded-xl max-h-64 object-cover" />
-                  ) : m.message_type === 'audio' && m.media_url ? (
-                    <audio controls src={m.media_url} className="w-full" />
-                  ) : (
-                    <div className="whitespace-pre-wrap break-words">{m.content}</div>
-                  )}
-                </button>
-
-                <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
-                  <span>{formatRelativeTime(m.created_at)}</span>
-                  {mine && (
-                    <span className="ml-3">{m.read_at ? 'Seen' : 'Sent'}</span>
-                  )}
-                </div>
-
-                {m._reactions?.length ? (
-                  <div className="mt-1 flex gap-1">
-                    {m._reactions.slice(0, 6).map((e: string, idx: number) => (
-                      <span key={idx} className="text-sm">
-                        {e}
-                      </span>
-                    ))}
-                  </div>
+              <div
+                className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm border ${
+                  mine
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                {m.message_type === 'image' && m.media_url ? (
+                  <img src={m.media_url} className="rounded-xl max-h-72 object-cover" alt="" />
                 ) : null}
-
-                {reactionTarget === m.id && (
-                  <div className={`mt-2 flex gap-2 ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow px-3 py-2 flex gap-2">
-                      {QUICK_REACTIONS.map((e) => (
-                        <button key={e} className="text-lg" onClick={() => addReaction(m.id, e)}>
-                          {e}
-                        </button>
-                      ))}
-                      <button className="text-xs text-slate-500" onClick={() => setReactionTarget(null)}>
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {m.message_type === 'audio' && m.media_url ? (
+                  <audio controls src={m.media_url} className="w-64 max-w-full" />
+                ) : null}
+                {m.message_type === 'text' ? <div className="whitespace-pre-wrap">{m.content}</div> : null}
+                <div className={`mt-1 text-[10px] ${mine ? 'text-white/80' : 'text-slate-500'}`}>
+                  {formatRelativeTime(m.created_at)}
+                  {mine ? (
+                    <span className="ml-2">{m.read_at ? 'Seen' : 'Sent'}</span>
+                  ) : null}
+                </div>
               </div>
             </div>
           )
         })}
-
-        {typingUser && <TypingIndicator />}
+        {/* Placeholder typing indicator */}
+        <TypingIndicator />
       </div>
 
-      <div className="shrink-0 p-3 border-t border-slate-200 dark:border-slate-800">
+      {/* Composer */}
+      <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 px-3 py-2">
         <div className="flex items-end gap-2">
-          <label className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title="Send image">
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) onPickImage(f)
-                e.currentTarget.value = ''
-              }}
-            />
+          <label className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 cursor-pointer">
             <ImageIcon className="h-5 w-5" />
+            <input type="file" accept="image/*" className="hidden" onChange={onPickImage} />
           </label>
 
           <button
-            className={`p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 ${recording ? 'text-red-500' : ''}`}
-            onClick={() => (recording ? stopRecording() : startRecording())}
-            title={recording ? 'Stop recording' : 'Voice message'}
+            onClick={recording ? stopRecording : startRecording}
+            className={`p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 ${recording ? 'text-red-500' : ''}`}
+            aria-label="Voice"
           >
             <Mic className="h-5 w-5" />
           </button>
 
-          <textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Message…"
-            rows={1}
-            className="flex-1 resize-none rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                onSendText()
-              }
-            }}
-          />
+          <div className="flex-1">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Message…"
+              rows={1}
+              className="w-full resize-none rounded-2xl border border-slate-200 dark:border-slate-800 bg-transparent px-4 py-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  sendText()
+                }
+              }}
+            />
+          </div>
 
           <button
-            onClick={onSendText}
-            className="px-4 py-3 rounded-2xl bg-blue-600 text-white font-semibold hover:bg-blue-700 flex items-center gap-2"
+            onClick={sendText}
+            disabled={sending}
+            className="p-3 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+            aria-label="Send"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-5 w-5" />
           </button>
         </div>
       </div>
-
-      {blockConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setBlockConfirm(false)}>
-          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="font-bold mb-2">Block this user?</div>
-            <div className="text-sm text-slate-600 dark:text-slate-300">
-              They won’t be able to message you or see your content easily.
-            </div>
-            <div className="mt-4 flex gap-2 justify-end">
-              <button className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800" onClick={() => setBlockConfirm(false)}>
-                Cancel
-              </button>
-              <button className="px-4 py-2 rounded-xl bg-red-600 text-white" onClick={blockUser}>
-                Block
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
-
-export default DMChatRoom
