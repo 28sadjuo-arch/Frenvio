@@ -6,9 +6,9 @@ type AiMsg = { id: string; role: 'user' | 'assistant'; content: string; created_
 function localAnswer(prompt: string) {
   const p = prompt.toLowerCase()
   if (p.includes('help') || p.includes('how')) return "Tell me what you're trying to do and I’ll guide you step by step."
-  if (p.includes('frenvio')) return "Frenvio AI (beta) here. Ask me anything about Frenvio, social media ideas, or coding."
+  if (p.includes('frenvio')) return "Frenvio AI here. Ask me anything about Frenvio, social media ideas, or coding."
   if (p.includes('sql')) return "If you're pasting SQL in Supabase, share the error line and I’ll fix it."
-  return "I’m Frenvio AI (beta). I can answer questions, suggest ideas, and help troubleshoot. What do you want to do?"
+  return "I’m Frenvio AI. I can answer questions, suggest ideas, and help troubleshoot. What do you want to do?"
 }
 
 async function callApi(prompt: string): Promise<string> {
@@ -31,7 +31,7 @@ async function callApi(prompt: string): Promise<string> {
 
 const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [messages, setMessages] = useState<AiMsg[]>([
-    { id: 'w', role: 'assistant', content: 'Hi 👋 I’m Frenvio AI (beta). Ask me anything.', created_at: new Date().toISOString() },
+    { id: 'w', role: 'assistant', content: 'Hi 👋 I’m Frenvio AI. Ask me anything.', created_at: new Date().toISOString() },
   ])
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
@@ -59,18 +59,27 @@ const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col h-[70vh] md:h-[78vh]">
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
+    <div className="flex h-[calc(100dvh-56px-64px)] flex-col bg-white dark:bg-slate-950 overflow-hidden">
+      <div className="shrink-0 sticky top-0 z-10 bg-white dark:bg-slate-950 px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
+        {onBack ? (
+          <button
+            onClick={onBack}
+            className="md:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900"
+            aria-label="Back"
+          >
+            ←
+          </button>
+        ) : null}
         <div className="h-9 w-9 rounded-2xl bg-blue-600 text-white flex items-center justify-center">
           <Bot className="h-5 w-5" />
         </div>
         <div>
           <div className="font-extrabold leading-tight">Frenvio AI</div>
-          <div className="text-xs text-slate-500">Beta • coming with more features soon</div>
+          <div className="text-xs text-slate-500">Online</div>
         </div>
       </div>
 
-      <div ref={listRef} className="p-4 space-y-3 overflow-y-auto flex-1">
+      <div ref={listRef} className="px-3 py-3 space-y-3 overflow-y-auto flex-1 min-h-0">
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
@@ -87,7 +96,7 @@ const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
         {loading && <div className="text-xs text-slate-500">Thinking…</div>}
       </div>
 
-      <div className="shrink-0 p-3 border-t border-slate-200 dark:border-slate-800">
+      <div className="shrink-0 px-3 py-2 border-t border-slate-200 dark:border-slate-800">
         <div className="flex items-end gap-2">
           <textarea
             value={text}

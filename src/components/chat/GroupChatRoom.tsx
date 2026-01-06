@@ -43,6 +43,9 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId, onBack }) => {
   const [memberQuery, setMemberQuery] = useState('')
   const [memberResults, setMemberResults] = useState<any[]>([])
   const [loadingMembers, setLoadingMembers] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
+  const [members, setMembers] = useState<any[]>([])
+  const [myRole, setMyRole] = useState<string>('member')
 
   const leaveGroup = async () => {
     if (!user) return
@@ -105,10 +108,21 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId, onBack }) => {
     ;(async () => {
       const { data: g } = await supabase.from('groups').select('id, name, owner_id').eq('id', groupId).maybeSingle()
       setGroup(g || null)
+      const { data: me } = await supabase.from('group_members').select('role').eq('group_id', groupId).eq('user_id', user.id).maybeSingle()
+      setMyRole((me as any)?.role || 'member')
       const { count } = await supabase.from('group_members').select('*', { count: 'exact', head: true }).eq('group_id', groupId)
       setMembersCount(count || 0)
     })()
   }, [user, groupId])
+
+  const loadMembers = async () => {
+    const { data } = await supabase
+      .from('group_members')
+      .select('user_id, role, profiles:profiles(id, username, display_name, avatar_url, verified)')
+      .eq('group_id', groupId)
+      .limit(200)
+    setMembers((data as any[]) || [])
+  }
 
   useEffect(() => {
     let ignore = false
@@ -189,14 +203,26 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId, onBack }) => {
 
   const send = async (payload: Partial<GMsg>) => {
     if (!user) return
-    const { error } = await supabase.from('group_messages').insert({
+    const rich = {
       group_id: groupId,
       sender_id: user.id,
       content: payload.content || '',
       message_type: payload.message_type || 'text',
       media_url: payload.media_url || null,
-    })
-    if (error) alert('Could not send message.')
+    }
+    let { error } = await supabase.from('group_messages').insert(rich)
+    // fallback if columns don't exist yet
+    if (error) {
+      const msg = String((error as any).message || '')
+      if (msg.includes('message_type') || msg.includes('media_url')) {
+        ;({ error } = await supabase.from('group_messages').insert({
+          group_id: groupId,
+          sender_id: user.id,
+          content: payload.content || '',
+        }))
+      }
+    }
+    if (error) alert('Could not send message. Please run the Supabase SQL file included in the project.')
     setNewMessage('')
   }
 
@@ -273,22 +299,38 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId, onBack }) => {
   }, [messages.length, groupId])
 
   const title = group?.name || 'Group'
-  const isAdmin = group?.owner_id === user?.id
+  const isAdmin = group?.owner_id === user?.id || myRole === 'admin'
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col h-[70vh] md:h-[78vh]">
-      <div className="shrink-0 px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+    <div className="flex h-[calc(100dvh-56px-64px)] flex-col bg-white dark:bg-slate-950 overflow-hidden">
+      <div className="shrink-0 sticky top-0 z-10 bg-white dark:bg-slate-950 px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           {onBack && (
             <button onClick={onBack} className="md:hidden p-2 -ml-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Back">←</button>
           )}
-          <div className="font-extrabold">{title}</div>
+          <button
+            onClick={async () => {
+              await loadMembers()
+              setMembersOpen(true)
+            }}
+            className="font-extrabold hover:underline"
+            aria-label="Group info"
+          >
+            {title}
+          </button>
           {isAdmin && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">Admin</span>}
         </div>
         <div className="flex items-center gap-3 text-xs text-slate-500">
-          <span className="inline-flex items-center gap-1">
+          <button
+            onClick={async () => {
+              await loadMembers()
+              setMembersOpen(true)
+            }}
+            className="inline-flex items-center gap-1 hover:underline"
+            aria-label="Members"
+          >
             <Users className="h-4 w-4" /> {membersCount}
-          </span>
+          </button>
           <div className="relative">
             <button className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setMenuOpen((s) => !s)}>
               <MoreVertical className="h-5 w-5" />
@@ -304,33 +346,111 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId, onBack }) => {
                 >
                   Leave group
                 </button>
-                {isAdmin && (
-                  <>
-                    <button
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        setAddOpen(true)
-                      }}
-                    >
-                      Add member
-                    </button>
-                    <button
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        setPromoteOpen(true)
-                      }}
-                    >
-                      Promote admin
-                    </button>
-                  </>
-                )}
+                <button
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
+                  onClick={async () => {
+                    setMenuOpen(false)
+                    await loadMembers()
+                    setMembersOpen(true)
+                  }}
+                >
+                  View members
+                </button>
+                <button
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    setAddOpen(true)
+                  }}
+                >
+                  Add member
+                </button>
+                {isAdmin ? (
+                  <button
+                    className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      setPromoteOpen(true)
+                    }}
+                  >
+                    Promote admin
+                  </button>
+                ) : null}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {membersOpen ? (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
+          onClick={() => setMembersOpen(false)}
+        >
+          <div
+            className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="font-extrabold">Members</div>
+              <button className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => setMembersOpen(false)} aria-label="Close">
+                ✕
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
+              {(members || []).map((m: any) => {
+                const p = m.profiles || {}
+                const name = p.display_name || p.username || 'User'
+                const uname = p.username ? '@' + p.username : ''
+                return (
+                  <div key={m.user_id} className="px-4 py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={p.avatar_url || '/default-avatar.svg'}
+                        className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-slate-800"
+                        alt=""
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1 font-semibold truncate">
+                          <span className="truncate">{name}</span>
+                          {p.verified ? (
+                            <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600 text-white text-[10px] leading-none">✓</span>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-slate-500 truncate">{uname}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+                        {m.role || 'member'}
+                      </span>
+                      {isAdmin && m.role !== 'admin' ? (
+                        <button
+                          className="text-xs px-3 py-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                          onClick={() => promoteMember(m.user_id)}
+                        >
+                          Make admin
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800">
+              <button
+                className="w-full px-4 py-3 rounded-2xl bg-blue-600 text-white font-semibold hover:bg-blue-700"
+                onClick={() => {
+                  setMembersOpen(false)
+                  setAddOpen(true)
+                }}
+              >
+                Add member
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div ref={listRef} className="flex-1 min-h-0 p-4 space-y-3 overflow-y-auto">
         {messages.map((m: any) => {
@@ -391,7 +511,7 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId, onBack }) => {
           )
         })}
 
-        {typingUser && <TypingIndicator />}
+        <TypingIndicator show={!!typingUser} />
       </div>
 
       <div className="shrink-0 p-3 border-t border-slate-200 dark:border-slate-800">

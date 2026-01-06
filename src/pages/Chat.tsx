@@ -228,7 +228,7 @@ const Chat: React.FC = () => {
 
   
 return (
-    <div className="flex h-[calc(100vh-56px-64px)] md:h-auto gap-4">
+    <div className="flex h-[calc(100dvh-56px-64px)] md:h-auto gap-4 overflow-hidden">
       {/* Left panel */}
       <div
         className={`w-full md:w-[380px] md:shrink-0 space-y-3 ${
@@ -246,9 +246,7 @@ return (
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
             <div className="p-3 border-b border-slate-200 dark:border-slate-800 text-sm font-bold">Inbox</div>
             <div className="divide-y divide-slate-200 dark:divide-slate-800">
-              {inboxItems.length === 0 && (
-                <div className="p-4 text-sm text-slate-600 dark:text-slate-300">No messages yet.</div>
-              )}
+              {inboxItems.length === 0 ? <div className="p-4" /> : null}
               {inboxItems.map((it: any) => {
                 const o = it.other || {}
                 const name = o.display_name || o.username || 'User'

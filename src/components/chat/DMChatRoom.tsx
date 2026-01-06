@@ -54,8 +54,10 @@ export default function DMChatRoom({
   const [sending, setSending] = useState(false)
   const [text, setText] = useState(initialText)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [otherTyping, setOtherTyping] = useState(false)
 
   const listRef = useRef<HTMLDivElement | null>(null)
+  const channelRef = useRef<any>(null)
 
   const roomId = useMemo(() => (user ? roomIdFor(user.id, otherUserId) : ''), [user, otherUserId])
 
@@ -122,13 +124,34 @@ export default function DMChatRoom({
           scrollToBottom()
         },
       )
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        if (payload.payload?.userId && payload.payload.userId !== user.id) {
+          setOtherTyping(true)
+          window.clearTimeout((window as any).__frenvioTypingTimer)
+          ;(window as any).__frenvioTypingTimer = window.setTimeout(() => setOtherTyping(false), 1200)
+        }
+      })
       .subscribe()
+
+    channelRef.current = channel
 
     return () => {
       isMounted = false
+      channelRef.current = null
       supabase.removeChannel(channel)
     }
   }, [user, roomId])
+
+  const typingSendRef = useRef<number | null>(null)
+  const sendTyping = () => {
+    if (!user) return
+    // throttle: max 1 event per 700ms
+    if (typingSendRef.current) return
+    typingSendRef.current = window.setTimeout(() => {
+      typingSendRef.current = null
+    }, 700) as any
+    channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId: user.id } })
+  }
 
   // Mark messages as read when opened
   useEffect(() => {
@@ -145,12 +168,29 @@ export default function DMChatRoom({
     markRead()
   }, [user, roomId])
 
+  const insertMessage = async (payload: any) => {
+    // Some users' DB may not have the new columns yet. Try rich payload, then fallback.
+    const { error } = await supabase.from('messages').insert(payload)
+    if (!error) return { error: null as any }
+    const msg = String((error as any).message || '')
+    if (msg.includes('message_type') || msg.includes('media_url') || msg.includes('read_at')) {
+      const fallback = {
+        room_id: payload.room_id,
+        sender_id: payload.sender_id,
+        receiver_id: payload.receiver_id,
+        content: payload.content ?? '',
+      }
+      return await supabase.from('messages').insert(fallback)
+    }
+    return { error }
+  }
+
   const sendText = async () => {
     if (!user || !roomId) return
     const content = text.trim()
     if (!content) return
     setSending(true)
-    const { error } = await supabase.from('messages').insert({
+    const { error } = await insertMessage({
       room_id: roomId,
       sender_id: user.id,
       receiver_id: otherUserId,
@@ -159,6 +199,7 @@ export default function DMChatRoom({
     })
     setSending(false)
     if (!error) setText('')
+    else alert('Could not send message. Please run the Supabase SQL file included in the project to add chat columns/policies.')
   }
 
   const sendMedia = async (file: File, type: 'image' | 'audio') => {
@@ -166,7 +207,7 @@ export default function DMChatRoom({
     setSending(true)
     try {
       const url = await uploadChatMedia(file, roomId)
-      await supabase.from('messages').insert({
+      const { error } = await insertMessage({
         room_id: roomId,
         sender_id: user.id,
         receiver_id: otherUserId,
@@ -174,6 +215,7 @@ export default function DMChatRoom({
         message_type: type,
         media_url: url,
       })
+      if (error) alert('Could not send media message. Please run the Supabase SQL file included in the project.')
     } finally {
       setSending(false)
     }
@@ -235,9 +277,9 @@ export default function DMChatRoom({
   const lastSeenLabel = other?.last_seen_at ? formatRelativeTime(other.last_seen_at) : null
 
   return (
-    <div className="flex h-[calc(100vh-56px-64px)] flex-col bg-white dark:bg-slate-950">
+    <div className="flex h-[calc(100dvh-56px-64px)] flex-col bg-white dark:bg-slate-950 overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 border-b border-slate-200 dark:border-slate-800 px-3 py-2 flex items-center justify-between gap-2">
+      <div className="shrink-0 sticky top-0 z-10 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-3 py-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           {onBack ? (
             <button
@@ -309,9 +351,7 @@ export default function DMChatRoom({
           <div className="text-sm text-slate-500">Loading…</div>
         ) : null}
 
-        {!loading && messages.length === 0 ? (
-          <div className="text-sm text-slate-500">No messages yet. Say hi 👋</div>
-        ) : null}
+        {/* Keep empty if no messages */}
 
         {messages.map((m) => {
           const mine = user?.id === m.sender_id
@@ -341,8 +381,7 @@ export default function DMChatRoom({
             </div>
           )
         })}
-        {/* Placeholder typing indicator */}
-        <TypingIndicator />
+        <TypingIndicator show={otherTyping} />
       </div>
 
       {/* Composer */}
@@ -364,7 +403,11 @@ export default function DMChatRoom({
           <div className="flex-1">
             <textarea
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value)
+                sendTyping()
+              }}
+              onInput={() => sendTyping(`dm:${roomId}`)}
               placeholder="Message…"
               rows={1}
               className="w-full resize-none rounded-2xl border border-slate-200 dark:border-slate-800 bg-transparent px-4 py-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
