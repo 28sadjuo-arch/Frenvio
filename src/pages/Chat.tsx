@@ -305,14 +305,14 @@ return (
                     ? '📷 Photo'
                     : last?.message_type === 'audio'
                       ? '🎤 Voice message'
-                      : (last?.content || '').slice(0, 60) || 'Say hi 👋'
+                      : (last?.content || '').slice(0, 60) || ''
                 const time = last?.created_at ? formatRelativeTime(last.created_at) : ''
                 return (
                   <button
-                    key={it.roomId}
-                    onClick={() => setSelected({ kind: 'dm', otherUserId: it.otherId })}
+                    key={it.room_id}
+                    onClick={() => setSelected({ kind: 'dm', otherUserId: it.other?.id })}
                     className={`w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-800 ${
-                      selected?.kind === 'dm' && selected.otherUserId === it.otherId ? 'bg-slate-50 dark:bg-slate-800' : ''
+                      selected?.kind === 'dm' && selected.otherUserId === it.other?.id ? 'bg-slate-50 dark:bg-slate-800' : ''
                     }`}
                   >
                     <div className="flex items-start gap-3">

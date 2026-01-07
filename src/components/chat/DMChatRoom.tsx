@@ -72,6 +72,20 @@ export default function DMChatRoom({
   const [actionsFor, setActionsFor] = useState<Msg | null>(null)
 
   const listRef = useRef<HTMLDivElement | null>(null)
+  const longPressTimer = useRef<number | null>(null)
+
+  const startLongPress = (m: Msg) => {
+    // Mobile-friendly: open message actions on long-press
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current)
+    longPressTimer.current = window.setTimeout(() => {
+      setActionsFor(m)
+    }, 450)
+  }
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current)
+    longPressTimer.current = null
+  }
 
   const roomId = useMemo(() => {
     if (!user) return ''
@@ -398,6 +412,13 @@ export default function DMChatRoom({
                     e.preventDefault()
                     setActionsFor(m)
                   }}
+                  onPointerDown={(e) => {
+                    // Long-press on touch screens
+                    if (e.pointerType === 'touch') startLongPress(m)
+                  }}
+                  onPointerUp={cancelLongPress}
+                  onPointerCancel={cancelLongPress}
+                  onPointerLeave={cancelLongPress}
                   onClick={() => setActionsFor(null)}
                   className={`rounded-2xl px-3 py-2 text-sm border ${
                     mine
