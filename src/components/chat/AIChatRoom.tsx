@@ -59,17 +59,8 @@ const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-56px-64px)] flex-col bg-white dark:bg-slate-950 overflow-hidden">
-      <div className="shrink-0 sticky top-0 z-10 bg-white dark:bg-slate-950 px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
-        {onBack ? (
-          <button
-            onClick={onBack}
-            className="md:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900"
-            aria-label="Back"
-          >
-            ←
-          </button>
-        ) : null}
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col h-[100dvh] md:h-[calc(100vh-56px-64px)]">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
         <div className="h-9 w-9 rounded-2xl bg-blue-600 text-white flex items-center justify-center">
           <Bot className="h-5 w-5" />
         </div>
@@ -79,7 +70,7 @@ const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
         </div>
       </div>
 
-      <div ref={listRef} className="px-3 py-3 space-y-3 overflow-y-auto flex-1 min-h-0">
+      <div ref={listRef} className="p-4 space-y-3 overflow-y-auto flex-1">
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
@@ -96,7 +87,7 @@ const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
         {loading && <div className="text-xs text-slate-500">Thinking…</div>}
       </div>
 
-      <div className="shrink-0 px-3 py-2 border-t border-slate-200 dark:border-slate-800">
+      <div className="shrink-0 p-3 border-t border-slate-200 dark:border-slate-800">
         <div className="flex items-end gap-2">
           <textarea
             value={text}

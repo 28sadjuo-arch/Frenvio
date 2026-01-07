@@ -1,228 +1,182 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Mic, MoreVertical, Send, UserPlus, Users } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { uploadChatMedia } from '../../lib/storage'
 import { formatRelativeTime } from '../../utilis/time'
-import { Image as ImageIcon, Mic, MoreVertical, Send, Users } from 'lucide-react'
-import TypingIndicator from './TypingIndicator'
+import AudioBubble from './AudioBubble'
+import TypingDots from './TypingDots'
+
+type ProfileLite = {
+  id: string
+  username: string | null
+  display_name: string | null
+  avatar_url: string | null
+  verified: boolean | null
+}
 
 type GMsg = {
   id: string
   group_id: string
   sender_id: string
   content: string
-  message_type?: 'text' | 'image' | 'audio'
+  message_type?: 'text' | 'audio'
   media_url?: string | null
   created_at: string
-  _sender?: any
-  _reactions?: string[]
+  reply_to_id?: string | null
 }
 
-const QUICK_REACTIONS = ['❤️', '😂', '👍', '🔥', '😮', '😢']
+const VerifiedBadge = () => (
+  <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600 text-white text-[10px] leading-none">✓</span>
+)
 
-interface GroupChatRoomProps {
+export default function GroupChatRoom({
+  groupId,
+  role = 'member',
+  onBack,
+}: {
   groupId: string
+  role?: 'admin' | 'member'
   onBack?: () => void
-}
-
-const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId, onBack }) => {
+}) {
   const { user } = useAuth()
+  const navigate = useNavigate()
+
   const [group, setGroup] = useState<any>(null)
-  const [membersCount, setMembersCount] = useState<number>(0)
   const [messages, setMessages] = useState<GMsg[]>([])
+  const [profiles, setProfiles] = useState<Record<string, ProfileLite>>({})
   const [newMessage, setNewMessage] = useState('')
-  const [typingUser, setTypingUser] = useState<string | null>(null)
-  const [recording, setRecording] = useState(false)
-  const recorderRef = useRef<MediaRecorder | null>(null)
-  const recordChunksRef = useRef<BlobPart[]>([])
-  const listRef = useRef<HTMLDivElement | null>(null)
-  const [reactionTarget, setReactionTarget] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [addOpen, setAddOpen] = useState(false)
-  const [promoteOpen, setPromoteOpen] = useState(false)
-  const [memberQuery, setMemberQuery] = useState('')
-  const [memberResults, setMemberResults] = useState<any[]>([])
-  const [loadingMembers, setLoadingMembers] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
-  const [members, setMembers] = useState<any[]>([])
-  const [myRole, setMyRole] = useState<string>('member')
+  const [memberSearch, setMemberSearch] = useState('')
+  const [typingOther, setTypingOther] = useState(false)
 
-  const leaveGroup = async () => {
-    if (!user) return
-    const ok = confirm('Leave this group?')
-    if (!ok) return
-    await supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', user.id)
-    onBack?.()
-  }
-
-  const searchMembers = async (q: string) => {
-    if (!q.trim()) {
-      setMemberResults([])
-      return
-    }
-    setLoadingMembers(true)
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, username, display_name, avatar_url, verified')
-      .ilike('username', `%${q}%`)
-      .limit(10)
-    setMemberResults(data || [])
-    setLoadingMembers(false)
-  }
-
-  const addMember = async (profileId: string) => {
-    if (!user) return
-    const { error } = await supabase.from('group_members').insert({ group_id: groupId, user_id: profileId, role: 'member' })
-    if (error) alert('Could not add member.')
-    else {
-      alert('Member added.')
-      setAddOpen(false)
-      setMemberQuery('')
-      setMemberResults([])
-    }
-  }
-
-  const promoteMember = async (profileId: string) => {
-    if (!user) return
-    const { error } = await supabase.from('group_members').update({ role: 'admin' }).eq('group_id', groupId).eq('user_id', profileId)
-    if (error) alert('Could not promote member.')
-    else {
-      alert('Promoted to admin.')
-      setPromoteOpen(false)
-      setMemberQuery('')
-      setMemberResults([])
-    }
-  }
-
-
+  const listRef = useRef<HTMLDivElement | null>(null)
   const roomKey = useMemo(() => `group:${groupId}`, [groupId])
 
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
-      if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
+      if (!listRef.current) return
+      listRef.current.scrollTop = listRef.current.scrollHeight
     })
   }
 
+  // Load group + messages
   useEffect(() => {
     if (!user) return
-    ;(async () => {
-      const { data: g } = await supabase.from('groups').select('id, name, owner_id').eq('id', groupId).maybeSingle()
+    let mounted = true
+
+    const load = async () => {
+      setLoading(true)
+      const { data: g } = await supabase.from('groups').select('*').eq('id', groupId).maybeSingle()
+      if (!mounted) return
       setGroup(g || null)
-      const { data: me } = await supabase.from('group_members').select('role').eq('group_id', groupId).eq('user_id', user.id).maybeSingle()
-      setMyRole((me as any)?.role || 'member')
-      const { count } = await supabase.from('group_members').select('*', { count: 'exact', head: true }).eq('group_id', groupId)
-      setMembersCount(count || 0)
-    })()
-  }, [user, groupId])
 
-  const loadMembers = async () => {
-    const { data } = await supabase
-      .from('group_members')
-      .select('user_id, role, profiles:profiles(id, username, display_name, avatar_url, verified)')
-      .eq('group_id', groupId)
-      .limit(200)
-    setMembers((data as any[]) || [])
-  }
-
-  useEffect(() => {
-    let ignore = false
-    async function load() {
-      if (!user) return
-      const { data } = await supabase
+      const { data: msgs, error } = await supabase
         .from('group_messages')
-        .select('id, group_id, sender_id, content, message_type, media_url, created_at')
+        .select('*')
         .eq('group_id', groupId)
         .order('created_at', { ascending: true })
-      if (!ignore) {
-        const rows = (data as any[]) || []
-        setMessages(rows)
-        scrollToBottom()
+
+      if (!mounted) return
+      if (!error) setMessages((msgs as any) || [])
+
+      // load profiles for senders
+      const senderIds = Array.from(new Set(((msgs as any) || []).map((m: any) => m.sender_id).filter(Boolean)))
+      if (senderIds.length) {
+        const { data: ps } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url, verified')
+          .in('id', senderIds)
+        const map: Record<string, any> = {}
+        ;(ps || []).forEach((p: any) => (map[p.id] = p))
+        if (mounted) setProfiles(map)
       }
 
-      // update last_read_at for me
-      await supabase.from('group_members').update({ last_read_at: new Date().toISOString() }).eq('group_id', groupId).eq('user_id', user.id)
+      setLoading(false)
+      scrollToBottom()
     }
+
     load()
 
     const channel = supabase
-      .channel('group:' + groupId, { config: { presence: { key: user?.id || 'anon' } } })
+      .channel(`group:${groupId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'group_messages', filter: `group_id=eq.${groupId}` },
-        (payload) => {
-          const row: any = payload.new
-          setMessages((prev) => [...prev, row])
+        { event: '*', schema: 'public', table: 'group_messages', filter: `group_id=eq.${groupId}` },
+        async (payload) => {
+          const row = payload.new as any
+          if (!row?.id) return
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === row.id)
+            if (idx >= 0) {
+              const copy = [...prev]
+              copy[idx] = { ...(copy[idx] as any), ...(row as any) }
+              return copy
+            }
+            return [...prev, row]
+          })
+
+          // ensure profile exists
+          if (row.sender_id && !profiles[row.sender_id]) {
+            const { data: p } = await supabase
+              .from('profiles')
+              .select('id, username, display_name, avatar_url, verified')
+              .eq('id', row.sender_id)
+              .maybeSingle()
+            if (p) setProfiles((prev) => ({ ...prev, [p.id]: p as any }))
+          }
+
           scrollToBottom()
-        }
+        },
       )
-      .on('broadcast', { event: 'typing' }, (payload) => {
-        const { userId, isTyping } = payload.payload as any
-        if (userId && user && userId !== user.id) setTypingUser(isTyping ? userId : null)
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED' && user) {
-          await channel.track({ user_id: user.id, online_at: new Date().toISOString() })
-        }
-      })
+      .subscribe()
 
     return () => {
-      ignore = true
+      mounted = false
       supabase.removeChannel(channel)
     }
-  }, [user, groupId])
-
-  useEffect(() => {
-    if (!user) return
-    const tick = async () => {
-      await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id)
-    }
-    tick()
-    const t = setInterval(tick, 30_000)
-    return () => clearInterval(t)
-  }, [user])
+  }, [groupId, user?.id])
 
   // typing broadcast
   useEffect(() => {
     if (!user) return
     const channel = supabase.channel('gtyping:' + groupId)
-    channel.subscribe()
+    channel
+      .on('broadcast', { event: 'typing' }, (payload: any) => {
+        const p = payload?.payload
+        if (!p) return
+        if (p.userId === user.id) return
+        setTypingOther(!!p.isTyping)
+      })
+      .subscribe()
+
     let t: any
     if (newMessage.trim()) {
       channel.send({ type: 'broadcast', event: 'typing', payload: { userId: user.id, isTyping: true } })
-      t = setTimeout(() => {
-        channel.send({ type: 'broadcast', event: 'typing', payload: { userId: user.id, isTyping: false } })
-      }, 1200)
+      t = setTimeout(() => channel.send({ type: 'broadcast', event: 'typing', payload: { userId: user.id, isTyping: false } }), 1200)
     } else {
       channel.send({ type: 'broadcast', event: 'typing', payload: { userId: user.id, isTyping: false } })
     }
+
     return () => {
       if (t) clearTimeout(t)
       supabase.removeChannel(channel)
     }
-  }, [newMessage, user, groupId])
+  }, [newMessage, user?.id, groupId])
 
   const send = async (payload: Partial<GMsg>) => {
     if (!user) return
-    const rich = {
+    const { error } = await supabase.from('group_messages').insert({
       group_id: groupId,
       sender_id: user.id,
       content: payload.content || '',
       message_type: payload.message_type || 'text',
       media_url: payload.media_url || null,
-    }
-    let { error } = await supabase.from('group_messages').insert(rich)
-    // fallback if columns don't exist yet
-    if (error) {
-      const msg = String((error as any).message || '')
-      if (msg.includes('message_type') || msg.includes('media_url')) {
-        ;({ error } = await supabase.from('group_messages').insert({
-          group_id: groupId,
-          sender_id: user.id,
-          content: payload.content || '',
-        }))
-      }
-    }
-    if (error) alert('Could not send message. Please run the Supabase SQL file included in the project.')
+    })
+    if (error) alert('Could not send message. Please run SUPABASE_CHAT_FINAL.sql.')
     setNewMessage('')
   }
 
@@ -232,14 +186,9 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId, onBack }) => {
     await send({ content, message_type: 'text' })
   }
 
-  const onPickImage = async (file: File) => {
-    try {
-      const url = await uploadChatMedia(file, roomKey)
-      await send({ message_type: 'image', media_url: url, content: '' })
-    } catch {
-      alert('Image upload failed. Make sure Storage bucket "chat-media" exists and is public.')
-    }
-  }
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const recordChunksRef = useRef<BlobPart[]>([])
+  const [recording, setRecording] = useState(false)
 
   const startRecording = async () => {
     if (recording) return
@@ -259,387 +208,312 @@ const GroupChatRoom: React.FC<GroupChatRoomProps> = ({ groupId, onBack }) => {
           const url = await uploadChatMedia(file, roomKey)
           await send({ message_type: 'audio', media_url: url, content: '' })
         } catch {
-          alert('Voice upload failed. Make sure Storage bucket "chat-media" exists and is public.')
+          alert('Voice upload failed. Make sure Storage bucket "chat-media" allows uploads.')
         }
       }
-      recorder.start()
       setRecording(true)
+      recorder.start()
     } catch {
       alert('Microphone permission denied.')
     }
   }
 
   const stopRecording = () => {
-    if (!recorderRef.current) return
-    recorderRef.current.stop()
-    recorderRef.current = null
-    setRecording(false)
+    try {
+      recorderRef.current?.stop()
+    } catch {
+      // ignore
+    } finally {
+      recorderRef.current = null
+      setRecording(false)
+    }
   }
 
-  const addReaction = async (messageId: string, emoji: string) => {
+  const deleteMessage = async (m: GMsg) => {
     if (!user) return
-    await supabase.from('group_message_reactions').upsert({ message_id: messageId, user_id: user.id, emoji })
-    setReactionTarget(null)
+    if (m.sender_id !== user.id) return
+    const { error } = await supabase.from('group_messages').delete().eq('id', m.id)
+    if (error) alert('Could not delete message.')
+  }
+
+  const leaveGroup = async () => {
+    if (!user) return
+    await supabase.from('group_members').delete().eq('group_id', groupId).eq('user_id', user.id)
+    onBack?.()
+  }
+
+  const addMemberByUsername = async () => {
+    if (!user) return
+    const uname = memberSearch.trim().replace(/^@+/, '').toLowerCase()
+    if (!uname) return
+    const { data: p } = await supabase.from('profiles').select('id').eq('username', uname).maybeSingle()
+    if (!p?.id) return alert('User not found.')
+    const { error } = await supabase.from('group_members').insert({ group_id: groupId, user_id: p.id, role: 'member' })
+    if (error) return alert('Could not add member (maybe already in group).')
+    setMemberSearch('')
+    alert('Member added.')
+  }
+
+  const promoteAdmin = async (uid: string) => {
+    if (role !== 'admin') return
+    const { error } = await supabase.from('group_members').update({ role: 'admin' }).eq('group_id', groupId).eq('user_id', uid)
+    if (error) alert('Could not promote.')
+  }
+
+  const [members, setMembers] = useState<Array<{ user_id: string; role: string; p: ProfileLite | null }>>([])
+
+  const loadMembers = async () => {
+    const { data: ms } = await supabase.from('group_members').select('user_id, role').eq('group_id', groupId).limit(200)
+    const ids = (ms || []).map((m: any) => m.user_id)
+    let pmap: Record<string, any> = {}
+    if (ids.length) {
+      const { data: ps } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, verified')
+        .in('id', ids)
+      ;(ps || []).forEach((p: any) => (pmap[p.id] = p))
+    }
+    setMembers((ms || []).map((m: any) => ({ user_id: m.user_id, role: m.role || 'member', p: pmap[m.user_id] || null })))
   }
 
   useEffect(() => {
-    if (!groupId) return
-    const fetchReactions = async () => {
-      const ids = messages.map((m) => m.id).slice(-50)
-      if (!ids.length) return
-      const { data } = await supabase.from('group_message_reactions').select('message_id, emoji').in('message_id', ids)
-      const map: Record<string, string[]> = {}
-      ;(data || []).forEach((r: any) => {
-        map[r.message_id] = map[r.message_id] || []
-        map[r.message_id].push(r.emoji)
-      })
-      setMessages((prev) => prev.map((m) => ({ ...(m as any), _reactions: map[m.id] || (m as any)._reactions || [] })))
-    }
-    fetchReactions()
-  }, [messages.length, groupId])
-
-  const title = group?.name || 'Group'
-  const isAdmin = group?.owner_id === user?.id || myRole === 'admin'
+    if (!membersOpen) return
+    loadMembers()
+  }, [membersOpen])
 
   return (
-    <div className="flex h-[calc(100dvh-56px-64px)] flex-col bg-white dark:bg-slate-950 overflow-hidden">
-      <div className="shrink-0 sticky top-0 z-10 bg-white dark:bg-slate-950 px-3 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {onBack && (
-            <button onClick={onBack} className="md:hidden p-2 -ml-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Back">←</button>
-          )}
-          <button
-            onClick={async () => {
-              await loadMembers()
-              setMembersOpen(true)
-            }}
-            className="font-extrabold hover:underline"
-            aria-label="Group info"
-          >
-            {title}
-          </button>
-          {isAdmin && <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">Admin</span>}
-        </div>
-        <div className="flex items-center gap-3 text-xs text-slate-500">
-          <button
-            onClick={async () => {
-              await loadMembers()
-              setMembersOpen(true)
-            }}
-            className="inline-flex items-center gap-1 hover:underline"
-            aria-label="Members"
-          >
-            <Users className="h-4 w-4" /> {membersCount}
-          </button>
-          <div className="relative">
-            <button className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setMenuOpen((s) => !s)}>
-              <MoreVertical className="h-5 w-5" />
+    <div className="flex flex-col bg-white dark:bg-slate-950 h-[100dvh] md:h-[calc(100vh-56px-64px)]">
+      {/* Header */}
+      <div className="shrink-0 sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800 px-3 py-2 flex items-center justify-between gap-2 bg-white/95 dark:bg-slate-950/95 backdrop-blur">
+        <div className="flex items-center gap-2 min-w-0">
+          {onBack ? (
+            <button
+              onClick={onBack}
+              className="md:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900"
+              aria-label="Back"
+            >
+              ←
             </button>
-            {menuOpen && (
-              <div className="absolute right-0 mt-2 w-52 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-lg overflow-hidden z-10">
-                <button
-                  className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    leaveGroup()
-                  }}
-                >
-                  Leave group
-                </button>
-                <button
-                  className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
-                  onClick={async () => {
-                    setMenuOpen(false)
-                    await loadMembers()
-                    setMembersOpen(true)
-                  }}
-                >
-                  View members
-                </button>
-                <button
-                  className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    setAddOpen(true)
-                  }}
-                >
-                  Add member
-                </button>
-                {isAdmin ? (
-                  <button
-                    className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
-                    onClick={() => {
-                      setMenuOpen(false)
-                      setPromoteOpen(true)
-                    }}
-                  >
-                    Promote admin
-                  </button>
-                ) : null}
-              </div>
-            )}
-          </div>
+          ) : null}
+
+          <button
+            onClick={() => setMembersOpen(true)}
+            className="flex items-center gap-2 min-w-0"
+            title="View members"
+          >
+            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+              <Users className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 text-left">
+              <div className="font-extrabold leading-tight truncate">{group?.name || 'Group'}</div>
+              <div className="text-xs text-slate-500 truncate">Tap to view members</div>
+            </div>
+          </button>
+        </div>
+
+        <div className="relative">
+          <button
+            onClick={() => setMenuOpen((s) => !s)}
+            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900"
+            aria-label="Menu"
+          >
+            <MoreVertical className="h-5 w-5" />
+          </button>
+          {menuOpen ? (
+            <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-lg overflow-hidden z-50">
+              <button
+                onClick={() => {
+                  setMembersOpen(true)
+                  setMenuOpen(false)
+                }}
+                className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
+              >
+                View members
+              </button>
+              <button
+                onClick={leaveGroup}
+                className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900"
+              >
+                Leave group
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
 
+      {/* Members modal */}
       {membersOpen ? (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
-          onClick={() => setMembersOpen(false)}
-        >
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setMembersOpen(false)}>
           <div
             className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div className="font-extrabold">Members</div>
-              <button className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900" onClick={() => setMembersOpen(false)} aria-label="Close">
-                ✕
+              <button className="text-sm text-slate-500 hover:underline" onClick={() => setMembersOpen(false)}>
+                Close
               </button>
             </div>
-            <div className="max-h-[70vh] overflow-y-auto divide-y divide-slate-200 dark:divide-slate-800">
-              {(members || []).map((m: any) => {
-                const p = m.profiles || {}
-                const name = p.display_name || p.username || 'User'
-                const uname = p.username ? '@' + p.username : ''
+
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex gap-2">
+                <input
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Add member by username…"
+                  className="flex-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2 text-sm"
+                />
+                <button onClick={addMemberByUsername} className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" /> Add
+                </button>
+              </div>
+              <div className="text-xs text-slate-500 mt-2">Any member can add others.</div>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto p-2">
+              {members.map((m) => {
+                const p = m.p
+                const title = p?.display_name || p?.username || 'User'
+                const uname = p?.username ? `@${p.username}` : ''
                 return (
-                  <div key={m.user_id} className="px-4 py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={p.avatar_url || '/default-avatar.svg'}
-                        className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-slate-800"
-                        alt=""
-                      />
+                  <div key={m.user_id} className="flex items-center justify-between gap-2 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900">
+                    <button
+                      className="flex items-center gap-3 min-w-0 text-left"
+                      onClick={() => {
+                        if (p?.username) navigate(`/${p.username}`)
+                        else navigate(`/profile/${m.user_id}`)
+                      }}
+                    >
+                      <img src={p?.avatar_url || '/default-avatar.svg'} className="h-10 w-10 rounded-full border border-slate-200 dark:border-slate-800 object-cover" />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1 font-semibold truncate">
-                          <span className="truncate">{name}</span>
-                          {p.verified ? (
-                            <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600 text-white text-[10px] leading-none">✓</span>
-                          ) : null}
+                          <span className="truncate">{title}</span>
+                          {p?.verified ? <VerifiedBadge /> : null}
+                          <span className="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                            {m.role}
+                          </span>
                         </div>
                         <div className="text-xs text-slate-500 truncate">{uname}</div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
-                        {m.role || 'member'}
-                      </span>
-                      {isAdmin && m.role !== 'admin' ? (
-                        <button
-                          className="text-xs px-3 py-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                          onClick={() => promoteMember(m.user_id)}
-                        >
-                          Make admin
-                        </button>
-                      ) : null}
-                    </div>
+                    </button>
+
+                    {role === 'admin' && m.role !== 'admin' ? (
+                      <button className="text-xs px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900" onClick={() => promoteAdmin(m.user_id)}>
+                        Promote
+                      </button>
+                    ) : null}
                   </div>
                 )
               })}
-            </div>
-            <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800">
-              <button
-                className="w-full px-4 py-3 rounded-2xl bg-blue-600 text-white font-semibold hover:bg-blue-700"
-                onClick={() => {
-                  setMembersOpen(false)
-                  setAddOpen(true)
-                }}
-              >
-                Add member
-              </button>
             </div>
           </div>
         </div>
       ) : null}
 
-      <div ref={listRef} className="flex-1 min-h-0 p-4 space-y-3 overflow-y-auto">
-        {messages.map((m: any) => {
-          const mine = m.sender_id === user?.id
+      {/* Messages */}
+      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-2">
+        {loading ? <div className="text-sm text-slate-500">Loading…</div> : null}
+
+        {messages.map((m) => {
+          const mine = user?.id === m.sender_id
+          const p = profiles[m.sender_id]
+          const title = p?.display_name || p?.username || 'User'
+          const uname = p?.username ? `@${p.username}` : ''
           return (
             <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-              <div className="max-w-[86%]">
+              {!mine ? (
                 <button
-                  className={`w-full text-left rounded-2xl px-4 py-2 ${
+                  className="mr-2 self-end"
+                  onClick={() => {
+                    if (p?.username) navigate(`/${p.username}`)
+                    else navigate(`/profile/${m.sender_id}`)
+                  }}
+                  aria-label="Open profile"
+                >
+                  <img src={p?.avatar_url || '/default-avatar.svg'} className="h-8 w-8 rounded-full border border-slate-200 dark:border-slate-800 object-cover" />
+                </button>
+              ) : null}
+
+              <div className="max-w-[86%]">
+                {!mine ? (
+                  <button
+                    className="text-xs text-slate-500 mb-1 inline-flex items-center gap-1 hover:underline"
+                    onClick={() => {
+                      if (p?.username) navigate(`/${p.username}`)
+                      else navigate(`/profile/${m.sender_id}`)
+                    }}
+                  >
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{title}</span>
+                    {p?.verified ? <VerifiedBadge /> : null}
+                    <span>{uname}</span>
+                  </button>
+                ) : null}
+
+                <div
+                  className={`rounded-2xl px-3 py-2 text-sm border ${
                     mine
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-800'
                   }`}
                   onContextMenu={(e) => {
                     e.preventDefault()
-                    setReactionTarget(m.id)
+                    if (mine) deleteMessage(m)
                   }}
+                  title={mine ? 'Right-click to delete your message' : ''}
                 >
-                  {m.message_type === 'image' && m.media_url ? (
-                    <img src={m.media_url} alt="sent" className="rounded-xl max-h-64 object-cover" />
-                  ) : m.message_type === 'audio' && m.media_url ? (
-                    <audio controls src={m.media_url} className="w-full" />
-                  ) : (
-                    <div className="whitespace-pre-wrap break-words">{m.content}</div>
-                  )}
-                </button>
-
-                <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
-                  <span>{formatRelativeTime(m.created_at)}</span>
+                  {m.message_type === 'audio' && m.media_url ? <AudioBubble src={m.media_url} /> : null}
+                  {m.message_type === 'text' ? <div className="whitespace-pre-wrap">{m.content}</div> : null}
+                  <div className={`mt-1 text-[10px] ${mine ? 'text-white/80' : 'text-slate-500'}`}>
+                    {formatRelativeTime(m.created_at)} ago
+                  </div>
                 </div>
-
-                {m._reactions?.length ? (
-                  <div className="mt-1 flex gap-1">
-                    {m._reactions.slice(0, 6).map((e: string, idx: number) => (
-                      <span key={idx} className="text-sm">
-                        {e}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-
-                {reactionTarget === m.id && (
-                  <div className={`mt-2 flex gap-2 ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow px-3 py-2 flex gap-2">
-                      {QUICK_REACTIONS.map((e) => (
-                        <button key={e} className="text-lg" onClick={() => addReaction(m.id, e)}>
-                          {e}
-                        </button>
-                      ))}
-                      <button className="text-xs text-slate-500" onClick={() => setReactionTarget(null)}>
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )
         })}
 
-        <TypingIndicator show={!!typingUser} />
+        {typingOther ? <TypingDots /> : null}
       </div>
 
-      <div className="shrink-0 p-3 border-t border-slate-200 dark:border-slate-800">
+      {/* Composer */}
+      <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 px-3 py-2 bg-white dark:bg-slate-950">
         <div className="flex items-end gap-2">
-          <label className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title="Send image">
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) onPickImage(f)
-                e.currentTarget.value = ''
-              }}
-            />
-            <ImageIcon className="h-5 w-5" />
-          </label>
-
           <button
-            className={`p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 ${recording ? 'text-red-500' : ''}`}
-            onClick={() => (recording ? stopRecording() : startRecording())}
-            title={recording ? 'Stop recording' : 'Voice message'}
+            onClick={recording ? stopRecording : startRecording}
+            className={`p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 ${recording ? 'text-red-500' : ''}`}
+            aria-label="Voice"
           >
             <Mic className="h-5 w-5" />
           </button>
 
-          <textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Message…"
-            rows={1}
-            className="flex-1 resize-none rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                onSendText()
-              }
-            }}
-          />
+          <div className="flex-1">
+            <textarea
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Message…"
+              rows={1}
+              className="w-full resize-none rounded-2xl border border-slate-200 dark:border-slate-800 bg-transparent px-4 py-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  onSendText()
+                }
+              }}
+            />
+          </div>
 
           <button
             onClick={onSendText}
-            className="px-4 py-3 rounded-2xl bg-blue-600 text-white font-semibold hover:bg-blue-700 flex items-center gap-2"
+            className="p-3 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+            aria-label="Send"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-5 w-5" />
           </button>
         </div>
-
-      {addOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setAddOpen(false)}>
-          <div className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 font-bold">Add member</div>
-            <div className="p-4 space-y-3">
-              <input
-                value={memberQuery}
-                onChange={(e) => {
-                  setMemberQuery(e.target.value)
-                  searchMembers(e.target.value)
-                }}
-                placeholder="Search username..."
-                className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950"
-              />
-              {loadingMembers && <div className="text-sm text-slate-500">Searching…</div>}
-              <div className="space-y-2">
-                {memberResults.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img src={p.avatar_url || '/default-avatar.svg'} className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-slate-800" alt="" />
-                      <div className="min-w-0">
-                        <div className="font-bold truncate">{p.display_name || p.username} {p.verified ? <span className="ml-1 inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600 text-white text-[10px]">✓</span> : null}</div>
-                        <div className="text-xs text-slate-500 truncate">@{p.username}</div>
-                      </div>
-                    </div>
-                    <button className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold" onClick={() => addMember(p.id)}>
-                      Add
-                    </button>
-                  </div>
-                ))}
-                {!loadingMembers && memberQuery.trim().length > 0 && memberResults.length === 0 && (
-                  <div className="text-sm text-slate-500">No users found.</div>
-                )}
-              </div>
-            </div>
-          </div>
+        <div className="mt-1 text-[11px] text-slate-500">
+          Tip: on desktop, right-click your own group message to delete.
         </div>
-      )}
-
-      {promoteOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setPromoteOpen(false)}>
-          <div className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 font-bold">Promote admin</div>
-            <div className="p-4 space-y-3">
-              <input
-                value={memberQuery}
-                onChange={(e) => {
-                  setMemberQuery(e.target.value)
-                  searchMembers(e.target.value)
-                }}
-                placeholder="Search username..."
-                className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950"
-              />
-              {loadingMembers && <div className="text-sm text-slate-500">Searching…</div>}
-              <div className="space-y-2">
-                {memberResults.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img src={p.avatar_url || '/default-avatar.svg'} className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-slate-800" alt="" />
-                      <div className="min-w-0">
-                        <div className="font-bold truncate">{p.display_name || p.username}</div>
-                        <div className="text-xs text-slate-500 truncate">@{p.username}</div>
-                      </div>
-                    </div>
-                    <button className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold" onClick={() => promoteMember(p.id)}>
-                      Promote
-                    </button>
-                  </div>
-                ))}
-                {!loadingMembers && memberQuery.trim().length > 0 && memberResults.length === 0 && (
-                  <div className="text-sm text-slate-500">No users found.</div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       </div>
     </div>
   )
 }
-
-export default GroupChatRoom
