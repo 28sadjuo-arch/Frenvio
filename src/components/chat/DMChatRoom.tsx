@@ -243,7 +243,7 @@ export default function DMChatRoom({
     })
     setSending(false)
     if (error) {
-      alert('Could not send message. Please run SUPABASE_CHAT_FINAL.sql in Supabase SQL Editor.')
+      alert(`Could not send message: ${error.message}`)
       return
     }
     setText('')
