@@ -43,11 +43,26 @@ const Chat: React.FC = () => {
   const [groupSearch, setGroupSearch] = useState('')
 
   useEffect(() => {
-    if (toParam) {
-      setTab('inbox')
+  const run = async () => {
+    if (!toParam) return
+    setTab('inbox')
+    // toParam can be a UUID or a username
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(toParam)
+    if (isUuid) {
       setSelected({ kind: 'dm', otherUserId: toParam })
+      return
     }
-  }, [toParam])
+    const { data } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('username', toParam)
+      .maybeSingle()
+    if (data?.id) {
+      setSelected({ kind: 'dm', otherUserId: data.id })
+    }
+  }
+  run()
+}, [toParam])
 
   // ------------------------------
   // Inbox conversations
@@ -278,7 +293,7 @@ return (
             <div className="p-3 border-b border-slate-200 dark:border-slate-800 text-sm font-bold">Inbox</div>
             <div className="divide-y divide-slate-200 dark:divide-slate-800">
               {inboxItems.length === 0 && (
-                <div className="p-4 text-sm text-slate-600 dark:text-slate-300">No messages yet.</div>
+                <div className="p-4 text-sm text-slate-600 dark:text-slate-300"></div>
               )}
               {inboxItems.map((it: any) => {
                 const o = it.other || {}

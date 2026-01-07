@@ -61,6 +61,16 @@ const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden flex flex-col h-[100dvh] md:h-[calc(100vh-56px-64px)]">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
+        {onBack && (
+          <button
+            className="mr-1 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
+            onClick={onBack}
+            aria-label="Back"
+            type="button"
+          >
+            ←
+          </button>
+        )}
         <div className="h-9 w-9 rounded-2xl bg-blue-600 text-white flex items-center justify-center">
           <Bot className="h-5 w-5" />
         </div>
