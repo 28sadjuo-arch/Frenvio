@@ -100,8 +100,39 @@ const Chat: React.FC = () => {
         })
       )
 
+      // Also show followed users even if there are no messages yet (so it's easy to start a chat).
+      // We only add users the current user follows.
+      const { data: follows } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id)
+        .limit(200)
+
+      const followedIds = (follows || []).map((f: any) => f.following_id).filter(Boolean)
+      const existingOtherIds = new Set(results.map((r: any) => r.other?.id).filter(Boolean))
+      const missing = followedIds.filter((id: string) => !existingOtherIds.has(id))
+      if (missing.length) {
+        const { data: followedProfiles } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url, verified, last_seen_at')
+          .in('id', missing)
+
+        ;(followedProfiles || []).forEach((p: any) => {
+          results.push({
+            room_id: roomIdFor(user.id, p.id),
+            last: null,
+            other: p,
+            unread: 0,
+          })
+        })
+      }
+
       // Sort by latest
-      results.sort((a, b) => new Date(b.last.created_at).getTime() - new Date(a.last.created_at).getTime())
+      results.sort((a: any, b: any) => {
+        const ta = a.last?.created_at ? new Date(a.last.created_at).getTime() : 0
+        const tb = b.last?.created_at ? new Date(b.last.created_at).getTime() : 0
+        return tb - ta
+      })
       return results
     },
   })

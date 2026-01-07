@@ -9,8 +9,14 @@ const TopNav: React.FC = () => {
   const to = user ? '/dashboard' : '/'
 
   // Home should be super minimal (no Sign in button)
+  const hideOnMobile = pathname === '/chat'
+
   return (
-    <nav className="sticky top-0 z-50 border-b border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-950/80 backdrop-blur">
+    <nav
+      className={`sticky top-0 z-50 border-b border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-950/80 backdrop-blur ${
+        hideOnMobile ? 'hidden md:block' : ''
+      }`}
+    >
       <div className="mx-auto w-full max-w-6xl px-4 py-3 flex items-center justify-between">
         <Link to={to} className="text-lg font-extrabold tracking-tight">
           Frenvio

@@ -57,6 +57,9 @@ export default function DMChatRoom({
   const navigate = useNavigate()
   const { user } = useAuth()
 
+  // otherUserId may be a UUID (profiles.id) OR a username coming from /chat?to=username
+  const [resolvedOtherId, setResolvedOtherId] = useState<string | null>(null)
+
   const [other, setOther] = useState<ProfileLite | null>(null)
   const [messages, setMessages] = useState<Msg[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,7 +73,11 @@ export default function DMChatRoom({
 
   const listRef = useRef<HTMLDivElement | null>(null)
 
-  const roomId = useMemo(() => (user ? roomIdFor(user.id, otherUserId) : ''), [user, otherUserId])
+  const roomId = useMemo(() => {
+    if (!user) return ''
+    const b = resolvedOtherId || otherUserId
+    return b ? roomIdFor(user.id, b) : ''
+  }, [user, otherUserId, resolvedOtherId])
 
   const name = other?.display_name || other?.username || 'User'
   const username = other?.username ? `@${other.username}` : ''
@@ -83,15 +90,23 @@ export default function DMChatRoom({
     })
   }
 
-  // Load other profile
+  // Resolve & load other profile. Supports otherUserId as UUID or username.
   useEffect(() => {
     if (!user) return
-    supabase
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(otherUserId)
+
+    const q = supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url, verified, last_seen_at')
-      .eq('id', otherUserId)
+
+    ;(isUuid ? q.eq('id', otherUserId) : q.eq('username', otherUserId.replace(/^@/, '').toLowerCase()))
       .maybeSingle()
-      .then(({ data }) => setOther((data as any) || null))
+      .then(({ data }) => {
+        const p = (data as any) || null
+        setOther(p)
+        setResolvedOtherId(p?.id || (isUuid ? otherUserId : null))
+      })
   }, [user, otherUserId])
 
   // Load messages + realtime
@@ -196,13 +211,18 @@ export default function DMChatRoom({
 
   const sendText = async () => {
     if (!user || !roomId) return
+    const rid = resolvedOtherId
+    if (!rid) {
+      alert('Could not send message: user not found.')
+      return
+    }
     const content = text.trim()
     if (!content) return
     setSending(true)
     const { error } = await supabase.from('messages').insert({
       room_id: roomId,
       sender_id: user.id,
-      receiver_id: otherUserId,
+      receiver_id: rid,
       content,
       message_type: 'text',
       reply_to_id: replyTo?.id ?? null,
@@ -218,6 +238,11 @@ export default function DMChatRoom({
 
   const onPickAudio = async (blob: Blob) => {
     if (!user || !roomId) return
+    const rid = resolvedOtherId
+    if (!rid) {
+      alert('Could not send message: user not found.')
+      return
+    }
     const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type || 'audio/webm' })
     setSending(true)
     try {
@@ -225,7 +250,7 @@ export default function DMChatRoom({
       const { error } = await supabase.from('messages').insert({
         room_id: roomId,
         sender_id: user.id,
-        receiver_id: otherUserId,
+        receiver_id: rid,
         content: '',
         message_type: 'audio',
         media_url: url,
@@ -277,7 +302,9 @@ export default function DMChatRoom({
 
   const blockUser = async () => {
     if (!user) return
-    await supabase.from('blocks').insert({ blocker_id: user.id, blocked_id: otherUserId })
+    const rid = resolvedOtherId
+    if (!rid) return
+    await supabase.from('blocks').insert({ blocker_id: user.id, blocked_id: rid })
     setMenuOpen(false)
     onBack?.()
   }

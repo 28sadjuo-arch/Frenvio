@@ -26,9 +26,14 @@ const BottomNav: React.FC = () => {
   if (pathname.startsWith('/auth')) return null
 
   const profileHref = profile?.username ? `/${profile.username}` : `/profile/${user.id}`
+  const hideOnMobile = pathname === '/chat'
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/90 backdrop-blur">
+    <nav
+      className={`fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/90 backdrop-blur ${
+        hideOnMobile ? 'hidden md:block' : ''
+      }`}
+    >
       <div className="mx-auto max-w-3xl px-2 flex items-center">
         <Item to="/dashboard"><Home size={22} /></Item>
         <Item to="/search"><Search size={22} /></Item>

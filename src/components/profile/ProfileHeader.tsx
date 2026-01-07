@@ -98,7 +98,12 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
           </div>
           <div className="text-slate-500 dark:text-slate-400">@{profile.username || 'unknown'}</div>
 
-          {profile.bio && <p className="mt-2 whitespace-pre-wrap text-slate-800 dark:text-slate-200">{profile.bio}</p>}
+          {profile.bio && (
+            <RichText
+              text={profile.bio}
+              className="mt-2 whitespace-pre-wrap break-words text-slate-800 dark:text-slate-200"
+            />
+          )}
 
           <div className="mt-3 flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300">
             <span><b className="text-slate-900 dark:text-white">{followCounts?.following ?? 0}</b> Following</span>
