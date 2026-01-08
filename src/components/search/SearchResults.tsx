@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { ShieldCheck } from 'lucide-react'
+import VerifiedBadge from '../common/VerifiedBadge'
 
 interface SearchResult {
   id: string
@@ -32,7 +32,7 @@ const SearchResults: React.FC<{ results: SearchResult[] }> = ({ results }) => {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <div className="font-bold truncate">{u.display_name || u.username || 'Unknown'}</div>
-                {!!u.verified && <ShieldCheck className="h-4 w-4 text-blue-500" />}
+                {!!u.verified && <VerifiedBadge size={16} />}
               </div>
               <div className="text-sm text-slate-500 truncate">@{u.username || 'unknown'}</div>
             </div>
