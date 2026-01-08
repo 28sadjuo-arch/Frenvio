@@ -438,8 +438,8 @@ return (
         )}
       </div>
 
-      {/* Right panel */}
-      <div className={`flex-1 min-w-0 ${selected ? 'block' : 'hidden md:block'}`}>
+      {/* Right panel (desktop) */}
+      <div className="hidden md:block flex-1 min-w-0">
         {selected?.kind === 'dm' ? (
           <DMChatRoom
             otherUserId={selected.otherUserId}
@@ -456,6 +456,23 @@ return (
           </div>
         )}
       </div>
+
+      {/* Fullscreen room overlay (mobile): covers TopNav/BottomNav so header never gets hidden */}
+      {selected ? (
+        <div className="md:hidden fixed inset-0 z-[60] bg-white dark:bg-slate-950">
+          {selected.kind === 'dm' ? (
+            <DMChatRoom
+              otherUserId={selected.otherUserId}
+              initialMessage={shareParam ? decodeURIComponent(shareParam) : ''}
+              onBack={() => setSelected(null)}
+            />
+          ) : selected.kind === 'group' ? (
+            <GroupChatRoom groupId={selected.groupId} onBack={() => setSelected(null)} />
+          ) : (
+            <AIChatRoom onBack={() => setSelected(null)} />
+          )}
+        </div>
+      ) : null}
 
       {createOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setCreateOpen(false)}>

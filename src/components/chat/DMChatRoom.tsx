@@ -62,6 +62,7 @@ export default function DMChatRoom({
 
   const [other, setOther] = useState<ProfileLite | null>(null)
   const [messages, setMessages] = useState<Msg[]>([])
+  const [reactionsByMessage, setReactionsByMessage] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [text, setText] = useState(initialText)
@@ -150,7 +151,23 @@ export default function DMChatRoom({
         .order('created_at', { ascending: true })
 
       if (!isMounted) return
-      if (!error) setMessages((data as any) || [])
+      const rows = (data as any) || []
+      if (!error) setMessages(rows)
+
+      // Load reactions for the visible messages (best-effort)
+      const ids = rows.map((m: any) => m.id).filter(Boolean)
+      if (ids.length) {
+        const { data: rdata } = await supabase
+          .from('message_reactions')
+          .select('message_id, emoji')
+          .in('message_id', ids)
+        const map: Record<string, string[]> = {}
+        ;(rdata || []).forEach((r: any) => {
+          if (!map[r.message_id]) map[r.message_id] = []
+          map[r.message_id].push(r.emoji)
+        })
+        if (isMounted) setReactionsByMessage(map)
+      }
       setLoading(false)
       scrollToBottom()
     }
@@ -179,9 +196,28 @@ export default function DMChatRoom({
       )
       .subscribe()
 
+    // Realtime reactions updates (best-effort)
+    const reactChannel = supabase
+      .channel(`dmreact:${roomId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, (payload) => {
+        const row = (payload.new || payload.old) as any
+        const mid = row?.message_id
+        if (!mid) return
+        // Small refetch for that message id
+        supabase
+          .from('message_reactions')
+          .select('emoji')
+          .eq('message_id', mid)
+          .then(({ data }) => {
+            setReactionsByMessage((prev) => ({ ...prev, [mid]: (data || []).map((x: any) => x.emoji) }))
+          })
+      })
+      .subscribe()
+
     return () => {
       isMounted = false
       supabase.removeChannel(channel)
+      supabase.removeChannel(reactChannel)
     }
   }, [user, roomId])
 
@@ -362,7 +398,18 @@ export default function DMChatRoom({
 
   const addReaction = async (m: Msg, emoji: string) => {
     if (!user) return
-    await supabase.from('message_reactions').upsert({ message_id: m.id, user_id: user.id, emoji })
+    const { error } = await supabase.from('message_reactions').upsert({ message_id: m.id, user_id: user.id, emoji })
+    if (!error) {
+      // Update UI immediately
+      setReactionsByMessage((prev) => {
+        const next = { ...prev }
+        const arr = (next[m.id] ? [...next[m.id]] : []).filter(Boolean)
+        // Remove any previous emoji by same user isn't tracked here; keeping simple and refetch will correct.
+        arr.push(emoji)
+        next[m.id] = arr
+        return next
+      })
+    }
     setMyReactions((prev) => ({ ...prev, [m.id]: emoji }))
     setActionsFor(null)
   }
@@ -434,6 +481,11 @@ export default function DMChatRoom({
         {messages.map((m) => {
           const mine = user?.id === m.sender_id
           const replied = m.reply_to_id ? messages.find((x) => x.id === m.reply_to_id) : null
+          const reacts = reactionsByMessage[m.id] || []
+          const reactCounts = reacts.reduce((acc: Record<string, number>, e: string) => {
+            acc[e] = (acc[e] || 0) + 1
+            return acc
+          }, {})
           return (
             <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
               <div className="max-w-[86%]">
@@ -473,6 +525,20 @@ export default function DMChatRoom({
                     {mine ? <span className="ml-2">{m.read_at ? 'Seen' : 'Sent'}</span> : null}
                   </div>
                 </div>
+
+                {reacts.length ? (
+                  <div className={`mt-1 flex flex-wrap gap-1 ${mine ? 'justify-end' : 'justify-start'}`}>
+                    {Object.entries(reactCounts).map(([emo, n]) => (
+                      <span
+                        key={emo}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                      >
+                        <span>{emo}</span>
+                        {n > 1 ? <span className="text-[11px] text-slate-600 dark:text-slate-300">{n}</span> : null}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
 
                 {actionsFor?.id === m.id ? (
                   <div className={`mt-1 flex items-center gap-2 ${mine ? 'justify-end' : 'justify-start'}`}>

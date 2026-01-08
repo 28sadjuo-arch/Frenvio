@@ -45,6 +45,7 @@ export default function GroupChatRoom({
 
   const [group, setGroup] = useState<any>(null)
   const [messages, setMessages] = useState<GMsg[]>([])
+  const [reactionsByMessage, setReactionsByMessage] = useState<Record<string, string[]>>({})
   const [profiles, setProfiles] = useState<Record<string, ProfileLite>>({})
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(true)
@@ -96,10 +97,27 @@ export default function GroupChatRoom({
         .order('created_at', { ascending: true })
 
       if (!mounted) return
-      if (!error) setMessages((msgs as any) || [])
+      const rows = (msgs as any) || []
+      if (!error) setMessages(rows)
+
+      // Load reactions for visible messages (best-effort)
+      const ids = rows.map((m: any) => m.id).filter(Boolean)
+      if (ids.length) {
+        const { data: rdata } = await supabase
+          .from('group_message_reactions')
+          .select('group_message_id, emoji')
+          .in('group_message_id', ids)
+        const map: Record<string, string[]> = {}
+        ;(rdata || []).forEach((r: any) => {
+          const key = r.group_message_id
+          if (!map[key]) map[key] = []
+          map[key].push(r.emoji)
+        })
+        if (mounted) setReactionsByMessage(map)
+      }
 
       // load profiles for senders
-      const senderIds = Array.from(new Set(((msgs as any) || []).map((m: any) => m.sender_id).filter(Boolean)))
+      const senderIds = Array.from(new Set(rows.map((m: any) => m.sender_id).filter(Boolean)))
       if (senderIds.length) {
         const { data: ps } = await supabase
           .from('profiles')
@@ -464,6 +482,11 @@ export default function GroupChatRoom({
           const title = p?.display_name || p?.username || 'User'
           const uname = p?.username ? `@${p.username}` : ''
           const replied = m.reply_to_id ? messages.find((x) => x.id === m.reply_to_id) : null
+          const reacts = reactionsByMessage[m.id] || []
+          const reactCounts = reacts.reduce((acc: Record<string, number>, e: string) => {
+            acc[e] = (acc[e] || 0) + 1
+            return acc
+          }, {})
 
           return (
             <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
@@ -528,6 +551,20 @@ export default function GroupChatRoom({
                   <div className={`mt-1 text-[10px] ${mine ? 'text-white/80' : 'text-slate-500'}`}>{formatRelativeTime(m.created_at)} ago</div>
                 </div>
 
+                {reacts.length ? (
+                  <div className={`mt-1 flex flex-wrap gap-1 ${mine ? 'justify-end' : 'justify-start'}`}>
+                    {Object.entries(reactCounts).map(([emo, n]) => (
+                      <span
+                        key={emo}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                      >
+                        <span>{emo}</span>
+                        {n > 1 ? <span className="text-[11px] text-slate-600 dark:text-slate-300">{n}</span> : null}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+
                 {actionsFor?.id === m.id ? (
                   <div className={`mt-1 flex items-center gap-2 ${mine ? 'justify-end' : 'justify-start'}`}>
                     <button
@@ -545,7 +582,19 @@ export default function GroupChatRoom({
                         className="text-sm px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
                         onClick={async () => {
                           try {
-                            await supabase.from('group_message_reactions').upsert({ group_message_id: m.id, user_id: user?.id, emoji: emo })
+                            const { error } = await supabase
+                              .from('group_message_reactions')
+                              .upsert({ group_message_id: m.id, user_id: user?.id, emoji: emo })
+                            if (!error) {
+                              setReactionsByMessage((prev) => {
+                                const next = { ...prev }
+                                const arr = (next[m.id] ? [...next[m.id]] : []).filter(Boolean)
+                                arr.push(emo)
+                                next[m.id] = arr
+                                return next
+                              })
+                              setMyReactions((prev) => ({ ...prev, [m.id]: emo }))
+                            }
                           } catch {}
                           setActionsFor(null)
                         }}
