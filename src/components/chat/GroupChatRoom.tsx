@@ -52,8 +52,22 @@ export default function GroupChatRoom({
   const [membersOpen, setMembersOpen] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
   const [typingOther, setTypingOther] = useState(false)
+  const [replyTo, setReplyTo] = useState<GMsg | null>(null)
+  const [actionsFor, setActionsFor] = useState<GMsg | null>(null)
+
+  const QUICK_REACTIONS = ['❤️', '😂', '👍', '🔥', '😮']
 
   const listRef = useRef<HTMLDivElement | null>(null)
+  const longPressTimer = useRef<number | null>(null)
+
+  const startLongPress = (m: GMsg) => {
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current)
+    longPressTimer.current = window.setTimeout(() => setActionsFor(m), 450)
+  }
+  const cancelLongPress = () => {
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current)
+    longPressTimer.current = null
+  }
   const roomKey = useMemo(() => `group:${groupId}`, [groupId])
 
   const scrollToBottom = () => {
@@ -169,21 +183,31 @@ export default function GroupChatRoom({
 
   const send = async (payload: Partial<GMsg>) => {
     if (!user) return
-    const { error } = await supabase.from('group_messages').insert({
-      group_id: groupId,
-      sender_id: user.id,
-      content: payload.content || '',
-      message_type: payload.message_type || 'text',
-      media_url: payload.media_url || null,
-    })
-    if (error) alert('Could not send message. Please run SUPABASE_CHAT_FINAL.sql.')
+    const { data: inserted, error } = await supabase
+      .from('group_messages')
+      .insert({
+        group_id: groupId,
+        sender_id: user.id,
+        content: payload.content || '',
+        message_type: payload.message_type || 'text',
+        media_url: payload.media_url || null,
+        reply_to_id: (payload as any).reply_to_id || null,
+      })
+      .select('*')
+      .maybeSingle()
+    if (error) alert(`Could not send message: ${error.message}`)
+    if (inserted) {
+      setMessages((prev) => [...prev, inserted as any])
+      scrollToBottom()
+    }
     setNewMessage('')
   }
 
   const onSendText = async () => {
     const content = newMessage.trim()
     if (!content) return
-    await send({ content, message_type: 'text' })
+    await send({ content, message_type: 'text', reply_to_id: replyTo?.id ?? null } as any)
+    setReplyTo(null)
   }
 
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -419,6 +443,8 @@ export default function GroupChatRoom({
           const p = profiles[m.sender_id]
           const title = p?.display_name || p?.username || 'User'
           const uname = p?.username ? `@${p.username}` : ''
+          const replied = m.reply_to_id ? messages.find((x) => x.id === m.reply_to_id) : null
+
           return (
             <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
               {!mine ? (
@@ -430,7 +456,10 @@ export default function GroupChatRoom({
                   }}
                   aria-label="Open profile"
                 >
-                  <img src={p?.avatar_url || '/default-avatar.svg'} className="h-8 w-8 rounded-full border border-slate-200 dark:border-slate-800 object-cover" />
+                  <img
+                    src={p?.avatar_url || '/default-avatar.svg'}
+                    className="h-8 w-8 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
+                  />
                 </button>
               ) : null}
 
@@ -450,23 +479,73 @@ export default function GroupChatRoom({
                 ) : null}
 
                 <div
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setActionsFor(m)
+                  }}
+                  onPointerDown={(e) => {
+                    if (e.pointerType === 'touch') startLongPress(m)
+                  }}
+                  onPointerUp={cancelLongPress}
+                  onPointerCancel={cancelLongPress}
+                  onPointerLeave={cancelLongPress}
                   className={`rounded-2xl px-3 py-2 text-sm border ${
                     mine
                       ? 'bg-blue-600 text-white border-blue-600'
                       : 'bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-800'
                   }`}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    if (mine) deleteMessage(m)
-                  }}
-                  title={mine ? 'Right-click to delete your message' : ''}
                 >
-                  {m.message_type === 'audio' && m.media_url ? <AudioBubble src={m.media_url} /> : null}
+                  {replied ? (
+                    <div className={`mb-2 rounded-xl px-2 py-1 text-[11px] ${mine ? 'bg-white/15' : 'bg-black/5 dark:bg-white/10'}`}>
+                      <div className="opacity-80">Replying to:</div>
+                      <div className="truncate">{replied.message_type === 'text' ? replied.content : 'Voice note'}</div>
+                    </div>
+                  ) : null}
+
+                  {m.message_type === 'audio' && m.media_url ? <AudioBubble src={m.media_url} className={mine ? 'text-white' : ''} /> : null}
                   {m.message_type === 'text' ? <div className="whitespace-pre-wrap">{m.content}</div> : null}
-                  <div className={`mt-1 text-[10px] ${mine ? 'text-white/80' : 'text-slate-500'}`}>
-                    {formatRelativeTime(m.created_at)} ago
-                  </div>
+
+                  <div className={`mt-1 text-[10px] ${mine ? 'text-white/80' : 'text-slate-500'}`}>{formatRelativeTime(m.created_at)} ago</div>
                 </div>
+
+                {actionsFor?.id === m.id ? (
+                  <div className={`mt-1 flex items-center gap-2 ${mine ? 'justify-end' : 'justify-start'}`}>
+                    <button
+                      className="text-xs px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
+                      onClick={() => {
+                        setReplyTo(m)
+                        setActionsFor(null)
+                      }}
+                    >
+                      Reply
+                    </button>
+                    {QUICK_REACTIONS.map((emo) => (
+                      <button
+                        key={emo}
+                        className="text-sm px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
+                        onClick={async () => {
+                          try {
+                            await supabase.from('group_message_reactions').upsert({ group_message_id: m.id, user_id: user?.id, emoji: emo })
+                          } catch {}
+                          setActionsFor(null)
+                        }}
+                      >
+                        {emo}
+                      </button>
+                    ))}
+                    {mine ? (
+                      <button
+                        className="text-xs px-2 py-1 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                        onClick={() => {
+                          deleteMessage(m)
+                          setActionsFor(null)
+                        }}
+                      >
+                        Delete
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           )
@@ -474,6 +553,20 @@ export default function GroupChatRoom({
 
         {typingOther ? <TypingDots /> : null}
       </div>
+
+      {/* Reply bar */}
+      {replyTo ? (
+        <div className="shrink-0 px-3 py-2 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 text-xs text-slate-700 dark:text-slate-200">
+              Replying to: <span className="font-semibold">{replyTo.message_type === 'text' ? replyTo.content : 'Voice note'}</span>
+            </div>
+            <button className="text-xs text-slate-500 hover:underline" onClick={() => setReplyTo(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* Composer */}
       <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 px-3 py-2 bg-white dark:bg-slate-950">
@@ -509,9 +602,6 @@ export default function GroupChatRoom({
           >
             <Send className="h-5 w-5" />
           </button>
-        </div>
-        <div className="mt-1 text-[11px] text-slate-500">
-          Tip: on desktop, right-click your own group message to delete.
         </div>
       </div>
     </div>

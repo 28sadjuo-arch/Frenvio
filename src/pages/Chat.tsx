@@ -274,7 +274,7 @@ const Chat: React.FC = () => {
 
   
 return (
-    <div className="fixed inset-0 z-40 bg-white dark:bg-slate-950 flex h-[100dvh] md:static md:inset-auto md:z-auto md:bg-transparent md:h-[calc(100vh-56px-64px)] gap-4">
+    <div className="mx-auto w-full max-w-6xl px-3 md:px-4 py-3 md:py-4 flex gap-4">
       {/* Left panel */}
       <div
         className={`w-full md:w-[380px] md:shrink-0 space-y-3 ${

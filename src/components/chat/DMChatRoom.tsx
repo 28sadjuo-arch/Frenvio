@@ -95,6 +95,8 @@ export default function DMChatRoom({
 
   const name = other?.display_name || other?.username || 'User'
   const username = other?.username ? `@${other.username}` : ''
+  const otherLastSeenMs = other?.last_seen_at ? new Date(other.last_seen_at).getTime() : 0
+  const isOnline = otherLastSeenMs ? Date.now() - otherLastSeenMs < 45_000 : false
   const lastSeenLabel = other?.last_seen_at ? `${formatRelativeTime(other.last_seen_at)} ago` : null
 
   const scrollToBottom = () => {
@@ -123,7 +125,17 @@ export default function DMChatRoom({
       })
   }, [user, otherUserId])
 
-  // Load messages + realtime
+  
+  // Poll other user's last seen (works even if realtime is not enabled for profiles)
+  useEffect(() => {
+    if (!other?.id) return
+    const t = setInterval(async () => {
+      const { data } = await supabase.from('profiles').select('last_seen_at').eq('id', other.id).maybeSingle()
+      if (data?.last_seen_at) setOther((prev) => (prev ? { ...prev, last_seen_at: data.last_seen_at } : prev))
+    }, 15000)
+    return () => clearInterval(t)
+  }, [other?.id])
+// Load messages + realtime
   useEffect(() => {
     if (!user || !roomId) return
     let isMounted = true
@@ -191,7 +203,7 @@ export default function DMChatRoom({
     if (!user) return
     const t = setInterval(() => {
       supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id)
-    }, 20000)
+    }, 15000)
     return () => clearInterval(t)
   }, [user])
 
@@ -233,18 +245,26 @@ export default function DMChatRoom({
     const content = text.trim()
     if (!content) return
     setSending(true)
-    const { error } = await supabase.from('messages').insert({
-      room_id: roomId,
-      sender_id: user.id,
-      receiver_id: rid,
-      content,
-      message_type: 'text',
-      reply_to_id: replyTo?.id ?? null,
-    })
+    const { data: inserted, error } = await supabase
+      .from('messages')
+      .insert({
+        room_id: roomId,
+        sender_id: user.id,
+        receiver_id: rid,
+        content,
+        message_type: 'text',
+        reply_to_id: replyTo?.id ?? null,
+      })
+      .select('*')
+      .maybeSingle()
     setSending(false)
     if (error) {
       alert(`Could not send message: ${error.message}`)
       return
+    }
+    if (inserted) {
+      setMessages((prev) => [...prev, inserted as any])
+      scrollToBottom()
     }
     setText('')
     setReplyTo(null)
@@ -261,16 +281,24 @@ export default function DMChatRoom({
     setSending(true)
     try {
       const url = await uploadChatMedia(file, roomId)
-      const { error } = await supabase.from('messages').insert({
-        room_id: roomId,
-        sender_id: user.id,
-        receiver_id: rid,
-        content: '',
-        message_type: 'audio',
-        media_url: url,
-        reply_to_id: replyTo?.id ?? null,
-      })
-      if (error) alert('Could not send voice note. Please run SUPABASE_CHAT_FINAL.sql.')
+      const { data: inserted, error } = await supabase
+        .from('messages')
+        .insert({
+          room_id: roomId,
+          sender_id: user.id,
+          receiver_id: rid,
+          content: '',
+          message_type: 'audio',
+          media_url: url,
+          reply_to_id: replyTo?.id ?? null,
+        })
+        .select('*')
+        .maybeSingle()
+      if (error) alert(`Could not send voice note: ${error.message}`)
+      if (inserted) {
+        setMessages((prev) => [...prev, inserted as any])
+        scrollToBottom()
+      }
       setReplyTo(null)
     } catch {
       alert('Voice upload failed. You can keep voice working by ensuring bucket "chat-media" exists and upload policy is enabled.')
@@ -370,7 +398,7 @@ export default function DMChatRoom({
               </div>
               <div className="text-xs text-slate-500 truncate">
                 {username}
-                {lastSeenLabel ? ` • Last seen ${lastSeenLabel}` : ''}
+                {isOnline ? ' • Online' : lastSeenLabel ? ` • Last seen ${lastSeenLabel}` : ''}
               </div>
             </div>
           </button>
