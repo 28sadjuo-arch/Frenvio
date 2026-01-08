@@ -121,7 +121,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null)
   }
 
-  const value = useMemo(
+  
+  // Presence heartbeat (best-effort)
+  React.useEffect(() => {
+    if (!user) return
+    const ping = async () => {
+      try {
+        await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id)
+      } catch {}
+    }
+    ping()
+    const id = window.setInterval(ping, 15000)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') ping()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [user])
+
+const value = useMemo(
     () => ({ user, session, profile, loading, signUp, signIn, signOut, refreshProfile }),
     [user, session, profile, loading],
   )

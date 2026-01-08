@@ -4,7 +4,7 @@ import { Home, Search, MessageCircle, Bell, User, Settings } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
 const Item = ({ to, children }: { to: string; children: React.ReactNode }) => {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const active = pathname === to || (to !== '/' && pathname.startsWith(to))
   return (
     <Link
@@ -19,16 +19,15 @@ const Item = ({ to, children }: { to: string; children: React.ReactNode }) => {
 
 const BottomNav: React.FC = () => {
   const { user, profile } = useAuth()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
 
   if (!user) return null
   // Don't show on auth page
   if (pathname.startsWith('/auth')) return null
 
   const profileHref = profile?.username ? `/${profile.username}` : `/profile/${user.id}`
-  const hideOnMobile = pathname === '/chat'
-
-  return (
+  const hideOnMobile = pathname === '/chat' && /[?&](to|room|group)=/.test(search)
+return (
     <nav
       className={`fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-slate-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/90 backdrop-blur ${
         hideOnMobile ? 'hidden' : ''

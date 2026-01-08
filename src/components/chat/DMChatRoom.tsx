@@ -70,6 +70,7 @@ export default function DMChatRoom({
   const [otherTyping, setOtherTyping] = useState(false)
   const [replyTo, setReplyTo] = useState<Msg | null>(null)
   const [actionsFor, setActionsFor] = useState<Msg | null>(null)
+  const [myReactions, setMyReactions] = useState<Record<string, string>>({})
 
   const listRef = useRef<HTMLDivElement | null>(null)
   const longPressTimer = useRef<number | null>(null)
@@ -362,6 +363,7 @@ export default function DMChatRoom({
   const addReaction = async (m: Msg, emoji: string) => {
     if (!user) return
     await supabase.from('message_reactions').upsert({ message_id: m.id, user_id: user.id, emoji })
+    setMyReactions((prev) => ({ ...prev, [m.id]: emoji }))
     setActionsFor(null)
   }
 

@@ -54,6 +54,7 @@ export default function GroupChatRoom({
   const [typingOther, setTypingOther] = useState(false)
   const [replyTo, setReplyTo] = useState<GMsg | null>(null)
   const [actionsFor, setActionsFor] = useState<GMsg | null>(null)
+  const [myReactions, setMyReactions] = useState<Record<string, string>>({})
 
   const QUICK_REACTIONS = ['❤️', '😂', '👍', '🔥', '😮']
 
@@ -181,21 +182,40 @@ export default function GroupChatRoom({
     }
   }, [newMessage, user?.id, groupId])
 
+  
   const send = async (payload: Partial<GMsg>) => {
     if (!user) return
-    const { data: inserted, error } = await supabase
-      .from('group_messages')
-      .insert({
-        group_id: groupId,
-        sender_id: user.id,
-        content: payload.content || '',
-        message_type: payload.message_type || 'text',
-        media_url: payload.media_url || null,
-        reply_to_id: (payload as any).reply_to_id || null,
-      })
-      .select('*')
-      .maybeSingle()
-    if (error) alert(`Could not send message: ${error.message}`)
+
+    const baseInsert: any = {
+      group_id: groupId,
+      sender_id: user.id,
+      content: payload.content || '',
+      message_type: payload.message_type || 'text',
+      media_url: payload.media_url || null,
+    }
+
+    // We support reply, but some DBs may not have reply_to_id yet.
+    const withReply: any = { ...baseInsert, reply_to_id: (payload as any).reply_to_id || null }
+
+    let inserted: any = null
+    let error: any = null
+
+    ;({ data: inserted, error } = await supabase.from('group_messages').insert(withReply).select('*').maybeSingle())
+
+    if (error && String(error.message || '').includes("reply_to_id")) {
+      // Retry without reply_to_id if column is missing
+      ;({ data: inserted, error } = await supabase.from('group_messages').insert(baseInsert).select('*').maybeSingle())
+      if (error) {
+        alert(`Could not send message: ${error.message}`)
+        return
+      } else {
+        alert('Reply is not enabled yet for groups. Run the Supabase SQL patch to add reply_to_id.')
+      }
+    } else if (error) {
+      alert(`Could not send message: ${error.message}`)
+      return
+    }
+
     if (inserted) {
       setMessages((prev) => [...prev, inserted as any])
       scrollToBottom()
