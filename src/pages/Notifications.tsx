@@ -13,7 +13,7 @@ const Notifications: React.FC = () => {
       if (!user) return []
       const { data, error } = await supabase
         .from('notifications')
-        .select('id, type, created_at, read, post_id, actor:profiles!actor_id(id, username, display_name, verified, avatar_url)')
+        .select('id, type, message, created_at, read, post_id, actor_id, actor:profiles!actor_id(id, username, display_name, verified, avatar_url)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -34,7 +34,12 @@ const Notifications: React.FC = () => {
       n.type === 'repost' ? 'reposted your post' : 'sent you a notification'
     return {
       ...n,
-      message: `${name} (@${uname}) ${base}`,
+      // Prefer the stored message if it exists, otherwise build a friendly one
+      message:
+        n.message ||
+        (n.type === 'verified'
+          ? 'Your account has been verified ✅'
+          : `${name} (@${uname}) ${base}`),
     }
   })
 
