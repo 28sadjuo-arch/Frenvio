@@ -38,7 +38,7 @@ export default function CommentsThread({ postId }: { postId: string }) {
   }
 
   return (
-    <div id="comments" className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+    <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 font-bold">Comments</div>
 
       <div className="p-4 flex gap-2">
