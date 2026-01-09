@@ -107,6 +107,30 @@ export default function DMChatRoom({
       listRef.current.scrollTop = listRef.current.scrollHeight
     })
   }
+const renderTextWithLinks = (text: string) => {
+  const splitRegex = /(https?:\/\/[^\s]+)/g
+  const testRegex = /^https?:\/\/[^\s]+$/
+
+  const parts = (text || '').split(splitRegex)
+
+  return parts.map((part, i) => {
+    if (testRegex.test(part)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noreferrer"
+          className="underline text-blue-600 dark:text-blue-400 break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      )
+    }
+    return <span key={i}>{part}</span>
+  })
+}
 
   // Resolve & load other profile. Supports otherUserId as UUID or username.
   useEffect(() => {
@@ -518,7 +542,12 @@ export default function DMChatRoom({
                   {m.message_type === 'audio' && m.media_url ? (
                     <AudioBubble src={m.media_url} className={mine ? 'text-white' : ''} />
                   ) : null}
-                  {m.message_type === 'text' ? <div className="whitespace-pre-wrap">{m.content}</div> : null}
+                  {m.message_type === 'text' ? (
+  <div className="whitespace-pre-wrap break-words">
+    {renderTextWithLinks(m.content)}
+  </div>
+) : null}
+
 
                   <div className={`mt-1 text-[10px] ${mine ? 'text-white/80' : 'text-slate-500'}`}>
                     {formatRelativeTime(m.created_at)} ago
