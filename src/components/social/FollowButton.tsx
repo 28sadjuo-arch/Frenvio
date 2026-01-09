@@ -24,25 +24,7 @@ export default function FollowButton({
     return `${base} ${pad} bg-blue-600 hover:bg-blue-700 text-white`
   }, [following, size, compact])
 
-  React.useEffect(() => {
-    let ignore = false
-    async function load() {
-      if (!user || !targetUserId || user.id === targetUserId) return
-      const { data, error } = await supabase
-        .from('follows')
-        .select('id')
-        .eq('follower_id', user.id)
-        .eq('following_id', targetUserId)
-        .maybeSingle()
-      if (!ignore) setFollowing(!error && !!data)
-    }
-    load()
-    return () => {
-      ignore = true
-    }
-  }, [user, targetUserId])
-
-  useEffect(() => {
+    useEffect(() => {
     let active = true
     async function loadFollowing() {
       if (!user) return

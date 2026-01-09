@@ -36,6 +36,8 @@ const Chat: React.FC = () => {
   const [searchParams] = useSearchParams()
   const toParam = searchParams.get('to')
   const shareParam = searchParams.get('share')
+  const shareGroupParam = searchParams.get('shareGroup')
+  const shareLink = shareParam || shareGroupParam
 
   // Groups UI
   const [createOpen, setCreateOpen] = useState(false)
@@ -63,6 +65,11 @@ const Chat: React.FC = () => {
   }
   run()
 }, [toParam])
+
+  useEffect(() => {
+    if (shareGroupParam) setTab('groups')
+  }, [shareGroupParam])
+
 
   // ------------------------------
   // Inbox conversations
@@ -443,7 +450,7 @@ return (
         {selected?.kind === 'dm' ? (
           <DMChatRoom
             otherUserId={selected.otherUserId}
-            initialMessage={shareParam ? decodeURIComponent(shareParam) : ''}
+            initialMessage={shareLink ? decodeURIComponent(shareLink) : ''}
             onBack={() => setSelected(null)}
           />
         ) : selected?.kind === 'group' ? (
@@ -463,7 +470,7 @@ return (
           {selected.kind === 'dm' ? (
             <DMChatRoom
               otherUserId={selected.otherUserId}
-              initialMessage={shareParam ? decodeURIComponent(shareParam) : ''}
+              initialMessage={shareLink ? decodeURIComponent(shareLink) : ''}
               onBack={() => setSelected(null)}
             />
           ) : selected.kind === 'group' ? (
