@@ -1,5 +1,0 @@
--- Frenvio v24: enable comment replies
-alter table public.comments
-  add column if not exists parent_id uuid references public.comments(id) on delete cascade;
-
-create index if not exists comments_parent_id_idx on public.comments(parent_id);
