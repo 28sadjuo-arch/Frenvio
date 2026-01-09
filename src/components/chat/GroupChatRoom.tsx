@@ -21,3 +21,7 @@ const renderTextWithLinks = (text: string) => {
     return <span key={i}>{part}</span>
   })
 }
+export default function GroupChatRoom(props: GroupChatRoomProps) {
+  ...
+}
+
