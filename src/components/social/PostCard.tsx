@@ -179,6 +179,29 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     setShareOpen(true)
   }
 
+
+const handleCopyPostLink = async () => {
+  const url = `${window.location.origin}/p/${post.id}`
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(url)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = url
+      ta.style.position = 'fixed'
+      ta.style.left = '-9999px'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    alert('Post link copied')
+  } catch {
+    alert('Could not copy link')
+  }
+}
+
   const handleReport = async () => {
     alert('Thanks — report received.')
     setMenuOpen(false)

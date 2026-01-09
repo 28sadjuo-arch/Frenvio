@@ -39,6 +39,13 @@ const Chat: React.FC = () => {
   const shareGroupParam = searchParams.get('shareGroup')
   const shareLink = shareParam || shareGroupParam
 
+
+// If we navigated here from "Share", automatically switch to the right tab.
+useEffect(() => {
+  if (shareParam) setTab('inbox')
+  if (shareGroupParam) setTab('groups')
+}, [shareParam, shareGroupParam])
+
   // Groups UI
   const [createOpen, setCreateOpen] = useState(false)
   const [groupName, setGroupName] = useState('')
