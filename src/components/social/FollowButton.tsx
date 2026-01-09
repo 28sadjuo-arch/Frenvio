@@ -92,6 +92,8 @@ export default function FollowButton({
   }
 
   if (!user || user.id === targetUserId) return null
+  // In compact contexts (e.g., post header), hide the button once following
+  if (compact && following) return null
 
   return (
     <button className={classes} disabled={busy} onClick={toggle}>

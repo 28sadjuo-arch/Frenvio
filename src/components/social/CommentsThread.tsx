@@ -39,15 +39,28 @@ export default function CommentsThread({
   const { data: comments = [], refetch, isFetching } = useQuery({
     queryKey: ['comments', postId, 'thread'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch comments without relying on foreign-key relationship joins (more robust)
+      const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
-        .select(
-          'id, content, created_at, user_id, parent_id, profiles:user_id (username, display_name, avatar_url, verified)'
-        )
+        .select('id, post_id, content, created_at, user_id, parent_id')
         .eq('post_id', postId)
         .order('created_at', { ascending: true })
-      if (error) throw error
-      return (data as any[]) as CommentRow[]
+
+      if (commentsError) throw commentsError
+
+      const rows = (commentsData ?? []) as any[]
+
+      const userIds = Array.from(new Set(rows.map((c) => c.user_id).filter(Boolean)))
+      let authorsMap: Record<string, any> = {}
+      if (userIds.length) {
+        const { data: authors } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url, verified')
+          .in('id', userIds)
+        if (authors) authorsMap = Object.fromEntries(authors.map((a: any) => [a.id, a]))
+      }
+
+      return rows.map((c) => ({ ...c, profiles: authorsMap[c.user_id] ?? null })) as CommentRow[]
     },
     enabled: !!postId,
   })

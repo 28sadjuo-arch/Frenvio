@@ -102,7 +102,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const likeBtn = useMemo(() => {
     const base =
       'flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm'
-    const color = liked ? 'text-pink-600' : 'text-slate-600 dark:text-slate-300'
+    const color = liked ? 'text-red-500' : 'text-slate-600 dark:text-slate-300'
     return `${base} ${color}`
   }, [liked])
 
@@ -176,13 +176,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   }
 
   const handleShare = async () => {
-    try {
-      const url = `${window.location.origin}/p/${post.id}`
-      await navigator.clipboard.writeText(url)
-      alert('Post link copied!')
-    } catch {
-      alert('Could not copy link.')
-    }
+    setShareOpen(true)
   }
 
   const handleReport = async () => {
@@ -283,7 +277,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
             <div className="mt-3 flex items-center justify-start gap-2">
               <button className={likeBtn} onClick={(e) => { e.stopPropagation(); handleLike() }}>
-                <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
+                <Heart className={`h-4 w-4 ${liked ? 'fill-red-500 text-red-500' : ''}`} />
                 <span>{likes}</span>
               </button>
 
@@ -352,6 +346,20 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 <div>
                   <div className="font-semibold">Share to inbox</div>
                   <div className="text-xs text-slate-500">Send this post in a message</div>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/p/${post.id}`
+                  navigate(`/chat?shareGroup=${encodeURIComponent(url)}`)
+                  setShareOpen(false)
+                }}
+                className="mt-2 w-full text-left px-4 py-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-3"
+              >
+                <Send className="h-5 w-5" />
+                <div>
+                  <div className="font-semibold">Share to group</div>
+                  <div className="text-xs text-slate-500">Send this post to a group</div>
                 </div>
               </button>
             </div>
