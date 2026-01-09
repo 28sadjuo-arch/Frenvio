@@ -1,21 +1,15 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, Profile } from '../lib/supabase'
+import { Session, User } from '@supabase/supabase-js'
 
 type AuthContextType = {
   user: User | null
   session: Session | null
   profile: Profile | null
   loading: boolean
-  signUp: (
-    email: string,
-    password: string,
-    username: string,
-    fullName: string,
-  ) => Promise<{ ok: boolean; error?: string }>
-  signIn: (identifier: string, password: string) => Promise<{ ok: boolean; error?: string }>
+  signUp: (email: string, password: string, username: string) => Promise<void>
+  signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
-  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -26,128 +20,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchProfile = async (uid: string | null) => {
-    if (!uid) {
-      setProfile(null)
-      return
-    }
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle()
-    if (error) {
-      // If RLS blocks reads, you'll see it in console; app still works without profile details.
-      console.warn('fetchProfile error', error.message)
-      setProfile(null)
-      return
-    }
-    setProfile((data as Profile) ?? null)
-  }
-
-  const refreshProfile = async () => {
-    await fetchProfile(user?.id ?? null)
-  }
-
   useEffect(() => {
-    let mounted = true
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return
-      setSession(data.session)
-      setUser(data.session?.user ?? null)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      if (session) fetchProfile(session.user.id)
       setLoading(false)
-      fetchProfile(data.session?.user?.id ?? null)
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
-      setUser(newSession?.user ?? null)
-      fetchProfile(newSession?.user?.id ?? null)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      if (session) fetchProfile(session.user.id)
+      else setProfile(null)
     })
 
-    return () => {
-      mounted = false
-      sub.subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
 
-  const signUp = async (email: string, password: string, username: string, fullName: string) => {
-    // Basic normalization
-    const cleanUsername = (username || '').trim().replace(/^@+/, '').toLowerCase()
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { username: cleanUsername, full_name: fullName },
-      },
-    })
-
-    if (error) return { ok: false, error: error.message }
-
-    // Create/Upsert profile row (if we already have the user id).
-    const uid = data.user?.id
-    if (uid) {
-      const { error: upsertErr } = await supabase.from('profiles').upsert({
-        id: uid,
-        email,
-        username: cleanUsername,
-        display_name: fullName || null,
-        verified: false,
-      })
-      if (upsertErr) console.warn('profile upsert error', upsertErr.message)
-    }
-
-    return { ok: true }
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+    setProfile(data)
   }
 
-  const signIn = async (identifier: string, password: string) => {
-    const id = (identifier || '').trim()
-    let email = id
+  const signUp = async (email: string, password: string, username: string) => {
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) throw error
 
-    // Allow login with username: look up email from profiles
-    if (!id.includes('@')) {
-      const uname = id.replace(/^@+/, '').toLowerCase()
-      const { data, error } = await supabase.from('profiles').select('email').eq('username', uname).maybeSingle()
-      if (error) return { ok: false, error: 'Username not found or not accessible yet.' }
-      if (!data?.email) return { ok: false, error: 'No email found for that username.' }
-      email = data.email
+    // Create/update profile record for this auth user
+    const newUserId = data.user?.id
+    if (newUserId) {
+      await supabase.from('profiles').upsert({
+        id: newUserId,
+        username,
+        verified: false,
+        followers_count: 0,
+        following_count: 0,
+        email,
+      } as any)
     }
 
+    // Optional: welcome email (only if you have a function deployed)
+    try {
+      await supabase.functions.invoke('send-email', {
+        to: email,
+        subject: 'Welcome to Frenvio!',
+        body: 'Thanks for joining. Share, chat, and connect with your friends.'
+      })
+    } catch {
+      // ignore if edge function isn't set up
+    }
+  }
+
+  const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return { ok: false, error: error.message }
-    return { ok: true }
   }
 
   const signOut = async () => {
     await supabase.auth.signOut()
-    setProfile(null)
   }
 
-  
-  // Presence heartbeat (best-effort)
-  React.useEffect(() => {
-    if (!user) return
-    const ping = async () => {
-      try {
-        await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id)
-      } catch {}
-    }
-    ping()
-    const id = window.setInterval(ping, 15000)
-    const onVis = () => {
-      if (document.visibilityState === 'visible') ping()
-    }
-    document.addEventListener('visibilitychange', onVis)
-    return () => {
-      window.clearInterval(id)
-      document.removeEventListener('visibilitychange', onVis)
-    }
-  }, [user])
-
-const value = useMemo(
-    () => ({ user, session, profile, loading, signUp, signIn, signOut, refreshProfile }),
-    [user, session, profile, loading],
+  return (
+    <AuthContext.Provider value={{ user, session, profile, loading, signUp, signIn, signOut }}>
+      {children}
+    </AuthContext.Provider>
   )
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export const useAuth = () => {

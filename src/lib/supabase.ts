@@ -7,29 +7,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export type Profile = {
   id: string
-  email?: string | null
-  username?: string | null
-  display_name?: string | null
-  bio?: string | null
-  avatar_url?: string | null
-  banner_url?: string | null
-  verified?: boolean | null
-  followers_count?: number | null
-  following_count?: number | null
-  verification_requested?: boolean | null
-  website?: string | null
-  instagram?: string | null
-  twitter?: string | null
-  telegram?: string | null
-  created_at?: string | null
+  username?: string
+  bio?: string
+  verified: boolean
+  followers_count: number
+  following_count: number
 }
 
 export type Post = {
   id: string
   user_id: string
   content: string
-  image_url?: string | null
-  likes?: number | null
-  reposts?: number | null
+  likes: number
+  reposts: number
   created_at: string
 }

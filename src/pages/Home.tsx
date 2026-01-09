@@ -1,168 +1,95 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import { Users, MessageCircle, Share2, Send, ChevronDown, Instagram, Twitter } from 'lucide-react'
+import { Users, MessageCircle, Share2, Instagram, Twitter, MessageSquare } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-
-type FaqItem = { q: string; a: string }
-
-const faqs: FaqItem[] = [
-  { q: 'Who is behind Frenvio?', a: 'Frenvio is built by Sadjuo (Founder & CEO) and Ines Olga (Co‑Founder).' },
-  { q: 'Is Frenvio free?', a: 'Yes — Frenvio is free to use. We’re focused on building a great community first.' },
-  { q: 'How do I get verified?', a: 'Go to Settings → Request verification. Our team will review your request.' },
-  { q: 'Can I share photos and moments?', a: 'Yes. Frenvio supports image posts so you can share memories with your circle.' },
-  { q: 'Is Frenvio available on mobile?', a: 'Yes. Frenvio is designed to work smoothly on phones, tablets, and desktop.' },
-]
 
 const Home: React.FC = () => {
   const { user } = useAuth()
-  const [open, setOpen] = useState<number | null>(0)
-
-  const goTo = user ? '/dashboard' : '/auth'
-
+  
   return (
-    <div className="w-full">
+    <div className="min-h-screen">
       <Helmet>
-        <title>Frenvio — Share, chat, and connect</title>
-        <meta name="description" content="Welcome to Frenvio — where friends share, chat, and connect." />
+        <title>FREVIO - Beautiful Social Connections</title>
+        <meta name="description" content="Where friends share, chat, and connect. Join FRENVIO today." />
       </Helmet>
-
-      {/* HERO */}
-      <section className="w-full bg-gradient-to-b from-slate-50 via-white to-slate-50 text-slate-900 dark:from-[#071339] dark:via-[#0B1B4A] dark:to-[#0B1B4A] dark:text-white">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-14 sm:py-20">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
-              Welcome to Frenvio
-            </h1>
-            <p className="mt-4 text-2xl sm:text-3xl font-extrabold leading-snug">
-              Where friends <span className="text-blue-600 dark:text-white">share</span>, <span className="text-blue-600 dark:text-white">chat</span>, and <span className="text-blue-600 dark:text-white">connect</span> with the people that matter.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                to={user ? '/dashboard' : '/auth'}
-                className="px-6 py-3 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-extrabold hover:opacity-90 transition"
-              >
-                Get started
-              </Link>
+      
+      {/* Hero Section */}
+      <section className="bg-gradient-to-r from-blue-900 to-blue-700 text-white py-20">
+        <div className="container mx-auto text-center px-4">
+          <h1 className="text-5xl font-bold mb-4">Welcome to FREVIO</h1>
+          <p className="text-xl mb-2">Where friends share, chat, and connect</p>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-8">
+            <p className="text-lg opacity-90">"We believe social connections should be beautiful, secure, and meaningful."</p>
+            <div className="text-right">
+              <p className="font-semibold">— Amahoro Sadju</p>
+              <p className="text-sm opacity-90">Founder & CEO</p>
             </div>
-
-            <div className="mt-12">
-              <div className="text-lg sm:text-xl font-extrabold tracking-tight">Why Frenvio</div>
-              <div className="mt-4 rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white/70 dark:bg-white/10 backdrop-blur p-6">
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-2xl bg-slate-900/5 dark:bg-white/10 flex items-center justify-center">
-                      <Users className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="font-extrabold">Follow</div>
-                      <div className="text-sm text-slate-600 dark:text-white/80">Find people you care about and build your circle.</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-2xl bg-slate-900/5 dark:bg-white/10 flex items-center justify-center">
-                      <MessageCircle className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="font-extrabold">Chat</div>
-                      <div className="text-sm text-slate-600 dark:text-white/80">A clean, modern inbox for messages and groups.</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-2xl bg-slate-900/5 dark:bg-white/10 flex items-center justify-center">
-                      <Share2 className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="font-extrabold">Share</div>
-                      <div className="text-sm text-slate-600 dark:text-white/80">Post thoughts, photos, and moments that matter.</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-2xl bg-slate-900/5 dark:bg-white/10 flex items-center justify-center">
-                      <Send className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="font-extrabold">Connect</div>
-                      <div className="text-sm text-slate-600 dark:text-white/80">Stay closer to your friends — every day.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
+          <Link to={user ? '/dashboard' : '/auth'} className="bg-white text-blue-900 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition">
+            {user ? 'Go to Feed' : 'Get Started'}
+          </Link>
         </div>
       </section>
-
-      {/* FAQ (accordion) */}
-      <section className="w-full bg-slate-100 text-slate-900 dark:bg-[#0B1B4A] dark:text-white">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-12">
-          <div className="rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur p-6 sm:p-8">
-            <h2 className="text-2xl font-extrabold">FAQ</h2>
-
-            <div className="mt-5 divide-y divide-white/10">
-              {faqs.map((item, i) => {
-                const isOpen = open === i
-                return (
-                  <button
-                    key={item.q}
-                    type="button"
-                    onClick={() => setOpen(isOpen ? null : i)}
-                    className="w-full text-left py-4 flex items-start justify-between gap-4"
-                  >
-                    <div>
-                      <div className="font-bold">{item.q}</div>
-                      {isOpen && <div className="mt-2 text-sm text-white/80">{item.a}</div>}
-                    </div>
-                    <ChevronDown className={`h-5 w-5 mt-0.5 shrink-0 transition ${isOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                )
-              })}
+      
+      {/* Features */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-12">Why FREVIO?</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <Users className="mx-auto mb-4 h-12 w-12 text-blue-600" />
+              <h3 className="text-xl font-semibold mb-2">Find & Follow</h3>
+              <p>Discover new friends and follow their journeys.</p>
+            </div>
+            <div className="text-center">
+              <MessageCircle className="mx-auto mb-4 h-12 w-12 text-blue-600" />
+              <h3 className="text-xl font-semibold mb-2">Chat</h3>
+              <p>and stay connected with your friends.</p>
+            </div>
+            <div className="text-center">
+              <Share2 className="mx-auto mb-4 h-12 w-12 text-blue-600" />
+              <h3 className="text-xl font-semibold mb-2">Share Moments</h3>
+              <p>Share your thoughts with your friends.</p>
             </div>
           </div>
         </div>
       </section>
-
-      {/* FOOTER */}
-      <section className="w-full bg-slate-100 text-slate-900 dark:bg-[#0B1B4A] dark:text-white">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-14">
-          <div className="rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur p-6 sm:p-8">
-            <div className="grid gap-10 md:grid-cols-2">
-              <div>
-                <h3 className="text-lg font-extrabold">Quick links</h3>
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-700 dark:text-white/85">
-                  <Link className="hover:text-slate-900 dark:hover:text-white" to="/about">About</Link>
-                  <Link className="hover:text-slate-900 dark:hover:text-white" to="/privacy">Privacy</Link>
-                  <Link className="hover:text-slate-900 dark:hover:text-white" to="/terms">Terms</Link>
-                  <Link className="hover:text-slate-900 dark:hover:text-white" to="/contact">Contact</Link>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-extrabold">Follow us</h3>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <a href="https://t.me/frenvio" target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-11 w-11 rounded-full border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10" aria-label="Telegram @frenvio" title="Telegram @frenvio">
-                    <Send className="h-5 w-5" />
-                  </a>
-
-                  <a href="https://instagram.com/frenvio" target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-11 w-11 rounded-full border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10" aria-label="Instagram @frenvio" title="Instagram @frenvio">
-                    <Instagram className="h-5 w-5" />
-                  </a>
-
-                  <a href="https://x.com/frenviox" target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-11 w-11 rounded-full border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10" aria-label="X @frenviox" title="X @frenviox">
-                    <Twitter className="h-5 w-5" />
-                  </a>
-                </div>
+      
+      {/* Footer */}
+      <section className="bg-gray-100 dark:bg-gray-800 py-16">
+        <div className="container mx-auto px-4">
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* Left: Links */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
+              <div className="space-y-2">
+                <Link to="/about" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 block">About</Link>
+                <Link to="/blog" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 block">Blog</Link>
+                <Link to="/privacy" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 block">Privacy</Link>
+                <Link to="/contact" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 block">Terms & Conditions</Link>
               </div>
             </div>
-
-            <div className="mt-10 border-t border-slate-200 dark:border-white/15 pt-6 text-sm text-slate-600 dark:text-white/70">
-              © 2026 Frenvio. All rights reserved.
+            
+            {/* Right: Social Media */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Follow Us</h3>
+              <div className="flex gap-4">
+                <a href="https://instagram.com/frenvio" target="_blank" rel="noopener noreferrer" className="text-gray-700 dark:text-gray-300 hover:text-pink-600 transition">
+                  <Instagram className="w-6 h-6" />
+                </a>
+                <a href="https://twitter.com/frenvio" target="_blank" rel="noopener noreferrer" className="text-gray-700 dark:text-gray-300 hover:text-blue-400 transition">
+                  <Twitter className="w-6 h-6" />
+                </a>
+                <a href="https://discord.com/invite/yourserver" target="_blank" rel="noopener noreferrer" className="text-gray-700 dark:text-gray-300 hover:text-indigo-500 transition">
+                  <MessageSquare className="w-6 h-6" />
+                </a>
+              </div>
             </div>
+          </div>
+          
+          <div className="border-t border-gray-300 dark:border-gray-700 mt-8 pt-8 text-center text-gray-600 dark:text-gray-400">
+            <p>&copy; 2025 FRENVIO. All rights reserved.</p>
           </div>
         </div>
       </section>
