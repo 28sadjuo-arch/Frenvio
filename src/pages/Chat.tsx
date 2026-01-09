@@ -458,7 +458,6 @@ return (
           <DMChatRoom
             otherUserId={selected.otherUserId}
             initialText={shareLink ? decodeURIComponent(shareLink) : ''}
-              autoSendInitial={!!shareLink}
             autoSendInitial={!!shareLink}
             onBack={() => setSelected(null)}
           />
@@ -480,7 +479,6 @@ return (
             <DMChatRoom
               otherUserId={selected.otherUserId}
               initialText={shareLink ? decodeURIComponent(shareLink) : ''}
-              autoSendInitial={!!shareLink}
             autoSendInitial={!!shareLink}
               onBack={() => setSelected(null)}
             />
