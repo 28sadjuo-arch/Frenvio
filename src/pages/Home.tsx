@@ -7,11 +7,11 @@ import { useAuth } from '../contexts/AuthContext'
 type FaqItem = { q: string; a: string }
 
 const faqs: FaqItem[] = [
-  { q: 'Who is behind Frenvio?', a: 'Frenvio is built by Sadjuo (Founder & CEO) and Ines Olga (Co‑Founder).' },
+  { q: 'Who is behind Frenvio?', a: 'Frenvio is built by Amahoro Sadju (Founder/Owner & CEO)' },
   { q: 'Is Frenvio free?', a: 'Yes — Frenvio is free to use. We’re focused on building a great community first.' },
   { q: 'How do I get verified?', a: 'Go to Settings → Request verification. Our team will review your request.' },
-  { q: 'Can I share photos and moments?', a: 'Yes. Frenvio supports image posts so you can share memories with your circle.' },
-  { q: 'Is Frenvio available on mobile?', a: 'Yes. Frenvio is designed to work smoothly on phones, tablets, and desktop.' },
+  { q: 'Can I share Anything on Frenvio?', a: 'Yes. Frenvio is Freespeech platfoarm.' },
+  { q: 'Is Frenvio available on all devices?', a: 'Yes. Frenvio is designed to work smoothly on phones, tablets, and desktop.' },
 ]
 
 const Home: React.FC = () => {
@@ -35,7 +35,7 @@ const Home: React.FC = () => {
               Welcome to Frenvio
             </h1>
             <p className="mt-4 text-2xl sm:text-3xl font-extrabold leading-snug">
-              Where friends <span className="text-blue-600 dark:text-white">share</span>, <span className="text-blue-600 dark:text-white">chat</span>, and <span className="text-blue-600 dark:text-white">connect</span> with the people that matter.
+              Where friends <span className="text-blue-600 dark:text-white">share</span>, <span className="text-blue-600 dark:text-white">chat</span>, and <span className="text-blue-600 dark:text-white">connect</span>.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">

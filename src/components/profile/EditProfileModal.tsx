@@ -119,7 +119,7 @@ export default function EditProfileModal({
                 className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2"
                 placeholder="username"
               />
-              <div className="mt-1 text-xs text-slate-500">You can mention people like @username in posts, comments, and bio.</div>
+              <div className="mt-1 text-xs text-slate-500">Your Frenvio Username.</div>
             </div>
           </div>
 
@@ -149,7 +149,7 @@ export default function EditProfileModal({
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value)}
                 className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2"
-                placeholder="@handle"
+                placeholder="Ig username here"
               />
             </div>
             <div>
@@ -158,7 +158,7 @@ export default function EditProfileModal({
                 value={twitter}
                 onChange={(e) => setTwitter(e.target.value)}
                 className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2"
-                placeholder="@handle"
+                placeholder="Twitter username"
               />
             </div>
             <div>
@@ -167,7 +167,7 @@ export default function EditProfileModal({
                 value={telegram}
                 onChange={(e) => setTelegram(e.target.value)}
                 className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2"
-                placeholder="@handle"
+                placeholder="TG username"
               />
             </div>
           </div>
