@@ -450,11 +450,13 @@ return (
         {selected?.kind === 'dm' ? (
           <DMChatRoom
             otherUserId={selected.otherUserId}
-            initialMessage={shareLink ? decodeURIComponent(shareLink) : ''}
+            initialText={shareLink ? decodeURIComponent(shareLink) : ''}
+              autoSendInitial={!!shareLink}
+            autoSendInitial={!!shareLink}
             onBack={() => setSelected(null)}
           />
         ) : selected?.kind === 'group' ? (
-          <GroupChatRoom groupId={selected.groupId} onBack={() => setSelected(null)} />
+          <GroupChatRoom groupId={selected.groupId} onBack={() => setSelected(null)} autoSendInitial={!!shareGroupParam} initialText={shareGroupParam ? decodeURIComponent(shareGroupParam) : ''} />
         ) : selected?.kind === 'ai' ? (
           <AIChatRoom onBack={() => setSelected(null)} />
         ) : (
@@ -470,11 +472,13 @@ return (
           {selected.kind === 'dm' ? (
             <DMChatRoom
               otherUserId={selected.otherUserId}
-              initialMessage={shareLink ? decodeURIComponent(shareLink) : ''}
+              initialText={shareLink ? decodeURIComponent(shareLink) : ''}
+              autoSendInitial={!!shareLink}
+            autoSendInitial={!!shareLink}
               onBack={() => setSelected(null)}
             />
           ) : selected.kind === 'group' ? (
-            <GroupChatRoom groupId={selected.groupId} onBack={() => setSelected(null)} />
+            <GroupChatRoom groupId={selected.groupId} onBack={() => setSelected(null)} autoSendInitial={!!shareGroupParam} initialText={shareGroupParam ? decodeURIComponent(shareGroupParam) : ''} />
           ) : (
             <AIChatRoom onBack={() => setSelected(null)} />
           )}

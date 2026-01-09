@@ -53,7 +53,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [reposted, setReposted] = useState<boolean | null>(null)
   const [likes, setLikes] = useState<number>(0)
   const [reposts, setReposts] = useState<number>(0)
-  const [commentsCount, setsCount] = useState<number>(0)
+  const [commentsCount, setCommentsCount] = useState<number>(0)
 
   useEffect(() => {
     let ignore = false
@@ -277,7 +277,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
             <div className="mt-3 flex items-center justify-start gap-2">
               <button className={likeBtn} onClick={(e) => { e.stopPropagation(); handleLike() }}>
-                <Heart className={`h-4 w-4 ${liked ? 'fill-red-500 text-red-500' : ''}`} />
+                <Heart className={`h-4 w-4 ${liked ? 'text-red-500' : ''}`} fill={liked ? 'currentColor' : 'none'} />
                 <span>{likes}</span>
               </button>
 
@@ -286,7 +286,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 <span>{reposts}</span>
               </button>
 
-              <button className={actionBtn} onClick={(e) => { e.stopPropagation(); setCommentOpen(true) }}>
+              <button className={actionBtn} onClick={(e) => { e.stopPropagation(); navigate(`/p/${post.id}`) }}>
                 <MessageCircle className="h-4 w-4" />
                 <span>{commentsCount}</span>
               </button>

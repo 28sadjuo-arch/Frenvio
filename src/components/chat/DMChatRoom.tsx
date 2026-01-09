@@ -48,10 +48,12 @@ const QUICK_REACTIONS = ['❤️', '😂', '👍', '🔥', '😮']
 export default function DMChatRoom({
   otherUserId,
   initialText = '',
+  autoSendInitial = false,
   onBack,
 }: {
   otherUserId: string
   initialText?: string
+  autoSendInitial?: boolean
   onBack?: () => void
 }) {
   const navigate = useNavigate()
@@ -75,6 +77,7 @@ export default function DMChatRoom({
 
   const listRef = useRef<HTMLDivElement | null>(null)
   const longPressTimer = useRef<number | null>(null)
+  const autoSentRef = useRef(false)
 
   const startLongPress = (m: Msg) => {
     // Mobile-friendly: open message actions on long-press
@@ -272,7 +275,7 @@ export default function DMChatRoom({
     }
   }
 
-  const sendText = async () => {
+  const sendText = async (silent: boolean = false) => {
     if (!user || !roomId) return
     const rid = resolvedOtherId
     if (!rid) {
@@ -418,6 +421,26 @@ export default function DMChatRoom({
     if (other?.username) navigate(`/${other.username}`)
     else navigate(`/profile/${otherUserId}`)
   }
+
+
+useEffect(() => {
+  // When opened from a share action, auto-send the shared link once the room is ready.
+  if (!autoSendInitial) return
+  if (autoSentRef.current) return
+  if (!roomId) return
+  const msg = (text || '').trim()
+  if (!msg) return
+  // wait for initial load to avoid double-send during hydration
+  if (loading) return
+  autoSentRef.current = true
+  ;(async () => {
+    try {
+      await sendText(true)
+    } catch {
+      // ignore
+    }
+  })()
+}, [autoSendInitial, roomId, loading])
 
   return (
     <div className="flex flex-col bg-white dark:bg-slate-950 h-[100dvh] md:h-[calc(100vh-56px-64px)]">

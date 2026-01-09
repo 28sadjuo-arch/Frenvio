@@ -41,8 +41,11 @@ export default function FollowButton({
       }
       setFollowing(!!data)
     }
+    const onFollowUpdated = () => loadFollowing()
+    window.addEventListener('follow-updated', onFollowUpdated)
     loadFollowing()
     return () => {
+      window.removeEventListener('follow-updated', onFollowUpdated)
       active = false
     }
   }, [user?.id, targetUserId])
@@ -57,11 +60,12 @@ export default function FollowButton({
           .delete()
           .eq('follower_id', user.id)
           .eq('following_id', targetUserId)
-        if (!error) setFollowing(false)
+        if (!error) { setFollowing(false); window.dispatchEvent(new Event('follow-updated')) }
       } else {
         const { error } = await supabase.from('follows').insert({ follower_id: user.id, following_id: targetUserId })
         if (!error) {
           setFollowing(true)
+          window.dispatchEvent(new Event('follow-updated'))
           // notify target
           try {
             await supabase.from('notifications').insert({ user_id: targetUserId, actor_id: user.id, type: 'follow' })

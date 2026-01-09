@@ -343,6 +343,21 @@ export default function GroupChatRoom({
     loadMembers()
   }, [membersOpen])
 
+
+useEffect(() => {
+  if (!autoSendInitial) return
+  if (autoSentRef.current) return
+  const msg = (text || '').trim()
+  if (!msg) return
+  if (loading) return
+  autoSentRef.current = true
+  ;(async () => {
+    try {
+      await sendText(true)
+    } catch {}
+  })()
+}, [autoSendInitial, loading])
+
   return (
     <div className="flex flex-col bg-white dark:bg-slate-950 h-[100dvh] md:h-[calc(100vh-56px-64px)]">
       {/* Header */}
