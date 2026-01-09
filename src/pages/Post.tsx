@@ -1,5 +1,5 @@
 import React from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import PostCard from '../components/social/PostCard'
@@ -7,6 +7,16 @@ import CommentsThread from '../components/social/CommentsThread'
 
 const PostPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
+
+  const location = useLocation()
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('focus') === 'comments') {
+      const el = document.getElementById('comments-thread')
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [location.search])
+
 
   const { data: post, isLoading } = useQuery({
     queryKey: ['post', id],
@@ -24,7 +34,7 @@ const PostPage: React.FC = () => {
   return (
     <div className="mx-auto max-w-3xl px-4 pt-4">
       <PostCard post={post as any} />
-      <CommentsThread postId={id!} />
+      <div id="comments-thread"><CommentsThread postId={id!} postOwnerId={(post as any)?.user_id} /></div>
     </div>
   )
 }

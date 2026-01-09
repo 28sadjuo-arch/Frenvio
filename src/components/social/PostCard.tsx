@@ -4,7 +4,6 @@ import {
   Heart,
   MessageCircle,
   Repeat2,
-  Share,
   Copy,
   Send,
   MoreHorizontal,
@@ -102,13 +101,18 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const likeBtn = useMemo(() => {
     const base =
-      'w-full flex items-center justify-center gap-2 px-3 py-2 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm'
+      'flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm'
     const color = liked ? 'text-pink-600' : 'text-slate-600 dark:text-slate-300'
     return `${base} ${color}`
   }, [liked])
 
-  const actionBtn =
-    'flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm text-slate-600 dark:text-slate-300'
+  const actionBtnBase = 'flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-full border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm'
+
+  const actionBtn = `${actionBtnBase} text-slate-600 dark:text-slate-300`
+
+  const repostBtn = useMemo(() => {
+    return `${actionBtnBase} ${reposted ? 'text-green-600' : 'text-slate-600 dark:text-slate-300'}`
+  }, [reposted])
 
   const { data: comments, refetch: refetchs } = useQuery({
     queryKey: ['comments', post.id],
@@ -277,26 +281,24 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               </div>
             )}
 
-            <div className="mt-3 flex items-center justify-between">
+            <div className="mt-3 flex items-center justify-start gap-2">
               <button className={likeBtn} onClick={(e) => { e.stopPropagation(); handleLike() }}>
                 <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
                 <span>{likes}</span>
               </button>
 
-              <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleRepost() }}>
+              <button className={repostBtn} onClick={(e) => { e.stopPropagation(); handleRepost() }}>
                 <Repeat2 className="h-4 w-4" />
                 <span>{reposts}</span>
               </button>
 
               <button className={actionBtn} onClick={(e) => { e.stopPropagation(); setCommentOpen(true) }}>
                 <MessageCircle className="h-4 w-4" />
-          <span className="text-xs">{commentsCount}</span>
-                <span></span>
+                <span>{commentsCount}</span>
               </button>
 
               <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleShare() }}>
-                <Share className="h-4 w-4" />
-                <span>Share</span>
+                <Send className="h-4 w-4" />
               </button>
             </div>
           </div>
