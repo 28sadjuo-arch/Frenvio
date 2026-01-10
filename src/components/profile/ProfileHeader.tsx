@@ -153,16 +153,7 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
                   className="px-4 py-2 rounded-full border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold"
                 >
                   Edit profile
-                </button>
-
-                  <button
-  onClick={copyProfileLink}
-  className="p-2 rounded-full border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
-  aria-label="Copy profile link"
->
-  <Share2 className="h-4 w-4" />
-</button>
-             
+                </button>             
 
                 <button
                   onClick={copyProfileLink}
