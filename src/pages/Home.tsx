@@ -51,7 +51,7 @@ const Home: React.FC = () => {
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
               Welcome to Frenvio
             </h1>
-            <p className="mt-4 text-2xl sm:text-3xl font-extrabold leading-snug">
+            <p className="mt-4 text-2xl sm:text-3xl font-medium leading-snug">
               Where friends <span className="text-blue-600 dark:text-white">share</span>, <span className="text-blue-600 dark:text-white">chat</span>, and <span className="text-blue-600 dark:text-white">connect</span>.
             </p>
 
@@ -116,7 +116,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* FAQ (accordion) */}
-      <section className="w-full bg-slate-100 text-slate-900 dark:bg-[#0B1B4A] dark:text-white">
+      <section className="w-full bg-slate-100 text-slate-900 dark:bg-[#06112B] dark:text-white">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-12">
           <div className="rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur p-6 sm:p-8">
             <h2 className="text-2xl font-extrabold">FAQ</h2>
@@ -145,7 +145,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* FOOTER */}
-      <section className="w-full bg-slate-100 text-slate-900 dark:bg-[#0B1B4A] dark:text-white">
+      <section className="w-full bg-slate-100 text-slate-900 dark:bg-[#06112B] dark:text-white">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-14">
           <div className="rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur p-6 sm:p-8">
             <div className="grid gap-10 md:grid-cols-2">

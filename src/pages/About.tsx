@@ -11,7 +11,7 @@ const About: React.FC = () => (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
       <h1 className="text-3xl font-extrabold tracking-tight">About Frenvio</h1>
       <p className="mt-3 text-slate-600 dark:text-slate-300">
-        Frenvio is a social media platform focused on sharing, communication, and great experience it was Founded by:
+        Frenvio is a social media platform focused on sharing, communication, and great experience It was founded by:
       </p>
 
       <div className="mt-5 grid md:grid-cols-2 gap-4">
@@ -21,7 +21,7 @@ const About: React.FC = () => (
           <div className="text-sm text-slate-500">Frenvio Inc</div>
         </div>
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="font-extrabold">Ines Olga</div>
+          <div className="font-extrabold">Amahoro Sadju</div>
           <div className="mt-1 text-slate-700 dark:text-slate-200">Co-founder</div>
           <div className="text-sm text-slate-500">Frenvio Inc</div>
         </div>
