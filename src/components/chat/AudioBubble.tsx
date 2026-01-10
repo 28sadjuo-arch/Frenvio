@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
+// iOS Safari does not support many WebM/Opus voice notes.
+// Also, this flag must be defined (an undefined variable here will crash the whole page on mobile).
+const isIOS = (() => {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  return /iPad|iPhone|iPod/i.test(ua)
+})()
+
 function fmt(sec: number) {
   if (!isFinite(sec) || sec < 0) sec = 0
   const m = Math.floor(sec / 60)
