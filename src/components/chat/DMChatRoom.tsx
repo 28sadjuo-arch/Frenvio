@@ -338,8 +338,9 @@ const renderTextWithLinks = (text: string) => {
       alert('Could not send message: user not found.')
       return
     }
-    const file = const ext = (blob.type || '').includes('mp4') ? 'm4a' : (blob.type || '').includes('mpeg') ? 'mp3' : 'webm'
-    const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type || 'audio/webm' })
+    const mime = blob.type || ''
+    const ext = mime.includes('mp4') ? 'm4a' : mime.includes('mpeg') ? 'mp3' : 'webm'
+    const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mime || 'audio/webm' })
     setSending(true)
     try {
       const url = await uploadChatMedia(file, roomId)
