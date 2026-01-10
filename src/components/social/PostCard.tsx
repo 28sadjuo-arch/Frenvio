@@ -64,21 +64,22 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         await refreshCounts()
         return
       }
-      const { data: l } = await supabase
+      const { data: l, error: likeErr } = await supabase
         .from('post_likes')
         .select('id')
         .eq('post_id', post.id)
         .eq('user_id', user.id)
         .maybeSingle()
-      const { data: r } = await supabase
+      const { data: r, error: repostErr } = await supabase
         .from('post_reposts')
         .select('id')
         .eq('post_id', post.id)
         .eq('user_id', user.id)
         .maybeSingle()
       if (ignore) return
-      setLiked(!!l)
-      setReposted(!!r)
+      // If RLS blocks SELECT, don't overwrite local state.
+      if (!likeErr) setLiked(!!l)
+      if (!repostErr) setReposted(!!r)
       await refreshCounts()
     }
     load()
@@ -146,7 +147,9 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const handleLike = async () => {
     if (!user) return
 
-    const nextLiked = !liked
+    const prevLiked = liked
+    const nextLiked = !prevLiked
+
     // Optimistic UI
     setLiked(nextLiked)
     setLikes((x) => (nextLiked ? x + 1 : Math.max(0, x - 1)))
@@ -169,6 +172,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       }
 
       // Best-effort: keep post counters consistent (if columns exist)
+      // Use the optimistic value we set, not stale closure values.
       await supabase
         .from('posts')
         .update({ likes: nextLiked ? likes + 1 : Math.max(0, likes - 1) })
@@ -178,7 +182,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     } catch (e) {
       console.error(e)
       // Revert optimistic UI on failure
-      setLiked(liked)
+      setLiked(prevLiked)
       setLikes((x) => (nextLiked ? Math.max(0, x - 1) : x + 1))
     }
   }

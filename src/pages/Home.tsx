@@ -45,7 +45,7 @@ const Home: React.FC = () => {
       </Helmet>
 
       {/* HERO */}
-      <section className="w-full bg-gradient-to-b from-white via-white to-white text-slate-900 dark:from-[#071339] dark:via-[#0B1B4A] dark:to-[#0B1B4A] dark:text-white">
+      <section className="w-full bg-gradient-to-b from-white via-white to-white text-slate-900 dark:from-[#050B1D] dark:via-[#06112B] dark:to-[#06112B] dark:text-white">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-14 sm:py-20">
           <div className="max-w-3xl">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">

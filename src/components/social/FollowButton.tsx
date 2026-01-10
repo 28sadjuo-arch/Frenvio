@@ -59,7 +59,8 @@ export default function FollowButton({
         .maybeSingle()
       if (!active) return
       if (error) {
-        setFollowing(false)
+        // If RLS blocks SELECT, don't clobber optimistic state.
+        setFollowing((prev) => (prev === null ? false : prev))
         return
       }
       setFollowing(!!data)

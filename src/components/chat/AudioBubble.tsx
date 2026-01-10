@@ -32,7 +32,15 @@ export default function AudioBubble({
     a.addEventListener('timeupdate', onTime)
     a.addEventListener('ended', onEnd)
 
-    return () => {
+    return (
+    {error ? (
+      <div className={`rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 ${className}`}>
+        <div className="text-sm font-bold">Voice note</div>
+        <div className="mt-2">
+          <audio src={src} controls className="w-full" />
+        </div>
+      </div>
+    ) : () => {
       a.removeEventListener('loadedmetadata', onLoaded)
       a.removeEventListener('timeupdate', onTime)
       a.removeEventListener('ended', onEnd)
@@ -64,7 +72,14 @@ export default function AudioBubble({
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="metadata"
+        crossOrigin="anonymous"
+        playsInline
+        onError={() => setError('Could not load audio.')} 
+      />
       <button
         type="button"
         onClick={toggle}
@@ -89,5 +104,7 @@ export default function AudioBubble({
         </div>
       </div>
     </div>
+    )}
+
   )
 }
