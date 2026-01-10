@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { Helmet } from 'react-helmet-async'
 
 const Auth: React.FC = () => {
   const navigate = useNavigate()
@@ -47,6 +48,8 @@ const Auth: React.FC = () => {
   }
 
   return (
+    <>
+      <Helmet><meta name="robots" content="noindex,nofollow" /></Helmet>
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-xl overflow-hidden">
         <div className="p-6 border-b border-slate-200 dark:border-slate-800">
@@ -163,6 +166,7 @@ const Auth: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   )
 }
 

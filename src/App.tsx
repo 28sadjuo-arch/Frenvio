@@ -1,7 +1,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { HelmetProvider } from 'react-helmet-async'
+import { HelmetProvider, Helmet } from 'react-helmet-async'
 
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
@@ -31,7 +31,7 @@ const queryClient = new QueryClient()
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return <LoadingSpinner />
-  return user ? <>{children}</> : <Navigate to="/auth" replace />
+  return user ? (<><Helmet><meta name="robots" content="noindex,nofollow" /></Helmet>{children}</>) : <Navigate to="/auth" replace />
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
