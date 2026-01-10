@@ -1,7 +1,11 @@
 import { supabase } from './supabase'
 
 async function uploadTo(bucket: string, path: string, file: File) {
-  const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true })
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+    upsert: true,
+    cacheControl: '3600',
+    contentType: file.type || undefined,
+  })
   if (error) throw error
   const { data } = supabase.storage.from(bucket).getPublicUrl(path)
   return data.publicUrl

@@ -2,34 +2,55 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 
+type Props = {
+  targetUserId: string
+  size?: 'sm' | 'md'
+  compact?: boolean
+  /** When true, the button renders nothing once the viewer is already following the target. */
+  hideWhenFollowing?: boolean
+}
+
 export default function FollowButton({
   targetUserId,
   size = 'sm',
   compact = false,
-}: {
-  targetUserId: string
-  size?: 'sm' | 'md'
-  compact?: boolean
-}) {
+  hideWhenFollowing = false,
+}: Props) {
   const { user } = useAuth()
   const [busy, setBusy] = useState(false)
   const [following, setFollowing] = useState<boolean | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  const btnRef = useRef<HTMLButtonElement | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
 
-  const classes = useMemo(() => {
-    const base = 'rounded-full font-semibold transition disabled:opacity-60'
-    const pad = compact ? 'px-3 py-1.5 text-xs' : size === 'md' ? 'px-4 py-2 text-sm' : 'px-3 py-1.5 text-xs'
+  const btnClass = useMemo(() => {
+    const base =
+      'inline-flex items-center justify-center font-extrabold rounded-full border transition select-none'
+    const sizeCls =
+      size === 'md' ? 'h-10 px-4 text-sm' : compact ? 'h-8 px-3 text-xs' : 'h-8 px-4 text-sm'
+    const common = `${base} ${sizeCls}`
     if (following) {
-      return `${base} ${pad} border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800`
+      return `${common} border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-900`
     }
-    return `${base} ${pad} bg-blue-600 hover:bg-blue-700 text-white`
+    return `${common} border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:border-blue-700`
   }, [following, size, compact])
 
   useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (!menuOpen) return
+      if (!rootRef.current) return
+      if (!rootRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [menuOpen])
+
+  useEffect(() => {
     let active = true
-    async function loadFollowing() {
-      if (!user) return
+    const loadFollowing = async () => {
+      if (!user || !targetUserId || user.id === targetUserId) {
+        if (active) setFollowing(false)
+        return
+      }
       const { data, error } = await supabase
         .from('follows')
         .select('id')
@@ -43,29 +64,41 @@ export default function FollowButton({
       }
       setFollowing(!!data)
     }
+
     const onFollowUpdated = () => loadFollowing()
-   window.dispatchEvent(new CustomEvent('follow-updated', { detail: { targetUserId } }))
+    // cross-component refresh (post cards, profile header, etc.)
     window.addEventListener('follow-updated', onFollowUpdated)
+
     loadFollowing()
     return () => {
-      window.removeEventListener('follow-updated', onFollowUpdated)
       active = false
+      window.removeEventListener('follow-updated', onFollowUpdated)
     }
   }, [user?.id, targetUserId])
 
+  const emitUpdate = () => {
+    try {
+      window.dispatchEvent(new CustomEvent('follow-updated', { detail: { targetUserId } }))
+    } catch {
+      // ignore
+    }
+  }
+
   const doFollow = async () => {
     if (!user || !targetUserId || user.id === targetUserId) return
+    if (busy) return
     setBusy(true)
     try {
-      const { error } = await supabase.from('follows').insert({ follower_id: user.id, following_id: targetUserId })
-      if (!error) {
-        setFollowing(true)
-        window.dispatchEvent(new Event('follow-updated'))
-        // notify target
-        try {
-          await supabase.from('notifications').insert({ user_id: targetUserId, actor_id: user.id, type: 'follow' })
-        } catch {}
-      }
+      const { error } = await supabase
+        .from('follows')
+        .insert({ follower_id: user.id, following_id: targetUserId })
+      if (error) throw error
+      setFollowing(true)
+      emitUpdate()
+    } catch (e) {
+      console.error(e)
+      // best-effort
+      setFollowing((prev) => prev ?? false)
     } finally {
       setBusy(false)
     }
@@ -73,6 +106,7 @@ export default function FollowButton({
 
   const doUnfollow = async () => {
     if (!user || !targetUserId || user.id === targetUserId) return
+    if (busy) return
     setBusy(true)
     try {
       const { error } = await supabase
@@ -80,45 +114,41 @@ export default function FollowButton({
         .delete()
         .eq('follower_id', user.id)
         .eq('following_id', targetUserId)
-      if (!error) {
-        setFollowing(false)
-        window.dispatchEvent(new Event('follow-updated'))
-      }
+      if (error) throw error
+      setFollowing(false)
+      setMenuOpen(false)
+      emitUpdate()
+    } catch (e) {
+      console.error(e)
     } finally {
       setBusy(false)
-      setMenuOpen(false)
     }
   }
 
-  // Close menu on outside click
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (!menuOpen) return
-      const t = e.target as any
-      if (btnRef.current && btnRef.current.contains(t)) return
-      setMenuOpen(false)
-    }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [menuOpen])
+  if (!user || !targetUserId || user.id === targetUserId) return null
+  if (following && hideWhenFollowing) return null
 
-  if (!user || user.id === targetUserId) return null
-  // In compact contexts (e.g., post header), hide button once following
-  if (compact && following) return null
+  // While loading, keep layout stable but disable.
+  if (following === null) {
+    return (
+      <button className={btnClass} disabled>
+        …
+      </button>
+    )
+  }
 
   return (
-    <div className="relative inline-block">
+    <div ref={rootRef} className="relative">
       {!following ? (
-        <button className={classes} disabled={busy} onClick={doFollow}>
+        <button className={btnClass} onClick={doFollow} disabled={busy}>
           Follow
         </button>
       ) : (
         <>
           <button
-            ref={btnRef}
-            className={classes}
+            className={btnClass}
+            onClick={() => setMenuOpen((v) => !v)}
             disabled={busy}
-            onClick={() => setMenuOpen((s) => !s)}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
           >

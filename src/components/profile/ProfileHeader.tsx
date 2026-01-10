@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase, Profile } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
-import { Globe, Instagram, Send, Settings, Share2, MessageCircle } from 'lucide-react'
+import { Globe, Instagram, Send, Settings, Share2, MessageCircle, Twitter } from 'lucide-react'
 import VerifiedBadge from '../common/VerifiedBadge'
 import RichText from '../common/RichText'
 import { useAuth } from '../../contexts/AuthContext'
@@ -201,6 +201,12 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
             {handles.instagram ? (
               <SocialIconLink href={`https://instagram.com/${handles.instagram}`} label="Instagram">
                 <Instagram className="h-4 w-4" />
+              </SocialIconLink>
+            ) : null}
+
+            {handles.twitter ? (
+              <SocialIconLink href={`https://x.com/${handles.twitter}`} label="X (Twitter)">
+                <Twitter className="h-4 w-4" />
               </SocialIconLink>
             ) : null}
 

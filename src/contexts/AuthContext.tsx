@@ -7,12 +7,13 @@ type AuthContextType = {
   session: Session | null
   profile: Profile | null
   loading: boolean
+  /** Sign up using full name + username + password (email is handled internally). */
   signUp: (
-    email: string,
     password: string,
     username: string,
     fullName: string,
   ) => Promise<{ ok: boolean; error?: string }>
+  /** Sign in using username (or email) + password. */
   signIn: (identifier: string, password: string) => Promise<{ ok: boolean; error?: string }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
@@ -20,29 +21,20 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchProfile = async (uid: string | null) => {
-    if (!uid) {
-      setProfile(null)
-      return
-    }
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle()
-    if (error) {
-      // If RLS blocks reads, you'll see it in console; app still works without profile details.
-      console.warn('fetchProfile error', error.message)
-      setProfile(null)
-      return
-    }
-    setProfile((data as Profile) ?? null)
-  }
-
   const refreshProfile = async () => {
-    await fetchProfile(user?.id ?? null)
+    if (!user) return
+    try {
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+      setProfile((data as any) || null)
+    } catch {
+      // ignore
+    }
   }
 
   useEffect(() => {
@@ -53,13 +45,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(data.session)
       setUser(data.session?.user ?? null)
       setLoading(false)
-      fetchProfile(data.session?.user?.id ?? null)
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
       setUser(newSession?.user ?? null)
-      fetchProfile(newSession?.user?.id ?? null)
+      if (!newSession) setProfile(null)
     })
 
     return () => {
@@ -68,9 +59,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const signUp = async (email: string, password: string, username: string, fullName: string) => {
-    // Basic normalization
+  useEffect(() => {
+    if (!user) return
+    refreshProfile()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  const signUp = async (password: string, username: string, fullName: string) => {
     const cleanUsername = (username || '').trim().replace(/^@+/, '').toLowerCase()
+    if (!cleanUsername || cleanUsername.length < 3 || !/^[a-z0-9_]+$/.test(cleanUsername)) {
+      return { ok: false, error: 'Username must be at least 3 characters and contain only letters, numbers, or _' }
+    }
+
+    // Ensure username is free (best-effort)
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', cleanUsername)
+      .maybeSingle()
+    if (existing?.id) return { ok: false, error: 'That username is already taken.' }
+
+    // Supabase Auth still needs an email. We generate a hidden one.
+    const email = `${cleanUsername}@users.frenvio.local`
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -79,20 +89,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: { username: cleanUsername, full_name: fullName },
       },
     })
-
     if (error) return { ok: false, error: error.message }
 
-    // Create/Upsert profile row (if we already have the user id).
+    // If email confirmations are disabled, we may already have a user id. Upsert profile so username login works.
     const uid = data.user?.id
     if (uid) {
-      const { error: upsertErr } = await supabase.from('profiles').upsert({
-        id: uid,
-        email,
-        username: cleanUsername,
-        display_name: fullName || null,
-        verified: false,
-      })
-      if (upsertErr) console.warn('profile upsert error', upsertErr.message)
+      await supabase.from('profiles').upsert(
+        {
+          id: uid,
+          email,
+          username: cleanUsername,
+          display_name: fullName || null,
+        },
+        { onConflict: 'id' },
+      )
     }
 
     return { ok: true }
@@ -102,12 +112,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const id = (identifier || '').trim()
     let email = id
 
-    // Allow login with username: look up email from profiles
+    // Login with username (look up email from profiles)
     if (!id.includes('@')) {
       const uname = id.replace(/^@+/, '').toLowerCase()
       const { data, error } = await supabase.from('profiles').select('email').eq('username', uname).maybeSingle()
       if (error) return { ok: false, error: 'Username not found or not accessible yet.' }
-      if (!data?.email) return { ok: false, error: 'No email found for that username.' }
+      if (!data?.email) return { ok: false, error: 'No account found for that username.' }
       email = data.email
     }
 
@@ -121,28 +131,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null)
   }
 
-  
   // Presence heartbeat (best-effort)
   React.useEffect(() => {
     if (!user) return
     const ping = async () => {
       try {
         await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id)
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
     ping()
-    const id = window.setInterval(ping, 15000)
-    const onVis = () => {
-      if (document.visibilityState === 'visible') ping()
-    }
-    document.addEventListener('visibilitychange', onVis)
-    return () => {
-      window.clearInterval(id)
-      document.removeEventListener('visibilitychange', onVis)
-    }
-  }, [user])
+    const t = setInterval(ping, 60_000)
+    return () => clearInterval(t)
+  }, [user?.id])
 
-const value = useMemo(
+  const value = useMemo(
     () => ({ user, session, profile, loading, signUp, signIn, signOut, refreshProfile }),
     [user, session, profile, loading],
   )

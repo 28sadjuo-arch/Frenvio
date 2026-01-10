@@ -16,6 +16,7 @@ export default function EditProfileModal({
   onSaved: () => void
 }) {
   const { user } = useAuth()
+
   const [displayName, setDisplayName] = useState(profile.display_name || '')
   const [username, setUsername] = useState(profile.username || '')
   const [bio, setBio] = useState(profile.bio || '')
@@ -36,40 +37,39 @@ export default function EditProfileModal({
   const save = async () => {
     if (!user) return
     setSaving(true)
+
     try {
       const cleanUsername = username.trim().replace(/^@+/, '').toLowerCase()
-
       if (!cleanUsername || cleanUsername.length < 3 || !/^[a-z0-9_]+$/.test(cleanUsername)) {
         alert('Username must be at least 3 characters and contain only letters, numbers, or _')
         return
       }
 
+      // Best-effort avatar upload (profile save should still work even if upload fails)
       let avatar_url = profile.avatar_url || null
-
       if (avatarFile) {
         try {
           avatar_url = await uploadAvatar(user.id, avatarFile)
         } catch (e) {
-          console.warn('Avatar upload failed. Create public bucket "avatars".', e)
+          console.warn('Avatar upload failed (check Supabase Storage bucket + policies).', e)
         }
       }
 
-            const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          username: cleanUsername,
-          display_name: displayName || null,
-          bio: bio || null,
-          website: website || null,
-          instagram: instagram || null,
-          twitter: twitter || null,
-          telegram: telegram || null,
-          avatar_url,
-          banner_url,
-        }, { onConflict: 'id' })
+      const payload = {
+        id: user.id,
+        display_name: displayName || null,
+        username: cleanUsername,
+        bio: bio || null,
+        website: website || null,
+        instagram: instagram || null,
+        twitter: twitter || null,
+        telegram: telegram || null,
+        avatar_url,
+      }
 
+      const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' })
       if (error) throw error
+
       onSaved()
       onClose()
     } catch (e) {
@@ -85,7 +85,11 @@ export default function EditProfileModal({
       <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
           <div className="font-extrabold">Edit profile</div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
+            aria-label="Close"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -101,6 +105,7 @@ export default function EditProfileModal({
                 placeholder="Your name"
               />
             </div>
+
             <div>
               <label className="text-sm font-semibold">Username</label>
               <input
@@ -109,7 +114,6 @@ export default function EditProfileModal({
                 className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2"
                 placeholder="username"
               />
-              <div className="mt-1 text-xs text-slate-500">Your Frenvio Username.</div>
             </div>
           </div>
 
@@ -130,27 +134,32 @@ export default function EditProfileModal({
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
                 className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2"
-                placeholder="https://..."
+                placeholder="https://example.com"
               />
             </div>
+
             <div>
               <label className="text-sm font-semibold">Instagram</label>
               <input
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value)}
                 className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2"
-                placeholder="Ig username here"
+                placeholder="Instagram username"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-semibold">X (Twitter)</label>
               <input
                 value={twitter}
                 onChange={(e) => setTwitter(e.target.value)}
                 className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2"
-                placeholder="Twitter username"
+                placeholder="X/Twitter username"
               />
             </div>
+
             <div>
               <label className="text-sm font-semibold">Telegram</label>
               <input
@@ -162,20 +171,25 @@ export default function EditProfileModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-semibold">Avatar</label>
-              <input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] || null)} className="mt-1 w-full text-sm" />
-            </div>
-            <div>
-              <label className="text-sm font-semibold">Banner</label>
-              <input type="file" accept="image/*" onChange={(e) => setBannerFile(e.target.files?.[0] || null)} className="mt-1 w-full text-sm" />
+          <div>
+            <label className="text-sm font-semibold">Avatar</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+              className="mt-1 w-full text-sm"
+            />
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              If avatar upload fails, your profile will still save — you can retry the upload after fixing Storage.
             </div>
           </div>
         </div>
 
         <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900"
+          >
             Cancel
           </button>
           <button

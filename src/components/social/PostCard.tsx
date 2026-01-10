@@ -49,8 +49,8 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [commentOpen, setCommentOpen] = useState(false)
   const [commentText, setText] = useState('')
 
-  const [liked, setLiked] = useState<boolean | null>(null)
-  const [reposted, setReposted] = useState<boolean | null>(null)
+  const [liked, setLiked] = useState<boolean>(false)
+  const [reposted, setReposted] = useState<boolean>(false)
   const [likes, setLikes] = useState<number>(0)
   const [reposts, setReposts] = useState<number>(0)
   const [commentsCount, setCommentsCount] = useState<number>(0)
@@ -58,7 +58,12 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   useEffect(() => {
     let ignore = false
     async function load() {
-      if (!user) return
+      if (!user) {
+        setLiked(false)
+        setReposted(false)
+        await refreshCounts()
+        return
+      }
       const { data: l } = await supabase
         .from('post_likes')
         .select('id')
@@ -139,7 +144,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   }
 
   const handleLike = async () => {
-    if (!user || liked === null) return
+    if (!user) return
 
     if (liked) {
       setLiked(false)
@@ -158,7 +163,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   }
 
   const handleRepost = async () => {
-    if (!user || reposted === null) return
+    if (!user) return
 
     if (reposted) {
       setReposted(false)
@@ -254,7 +259,7 @@ const handleCopyPostLink = async () => {
               </div>
 
               <div className="flex items-center gap-2">
-                {user && user.id !== post.user_id && <FollowButton targetUserId={post.user_id} compact />}
+                {user && user.id !== post.user_id && <FollowButton targetUserId={post.user_id} compact hideWhenFollowing />}
                 <button
                   className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
                   onClick={() => setMenuOpen((v) => !v)}

@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard
+Disallow: /chat
+Disallow: /notifications
+Disallow: /settings
+Disallow: /profile
+Disallow: /u
+Disallow: /search
+Disallow: /post
+
+Sitemap: /sitemap.xml

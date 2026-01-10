@@ -8,36 +8,42 @@ const Auth: React.FC = () => {
   const { user, signUp, signIn } = useAuth()
 
   const [isSignUp, setIsSignUp] = useState(false)
-  const [identifier, setIdentifier] = useState('') // email or username for login
-  const [email, setEmail] = useState('')
+
+  const [identifier, setIdentifier] = useState('') // username for login
   const [fullName, setFullName] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
 
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   React.useEffect(() => {
     if (user) navigate('/dashboard')
   }, [user, navigate])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setLoading(true)
-
-    const result = isSignUp
-      ? await signUp(email.trim(), password, username.trim(), fullName.trim())
-      : await signIn(identifier.trim(), password)
-
-    setLoading(false)
-
-    if (!result.ok) {
-      setError(result.error || 'Something went wrong.')
-      return
+    setBusy(true)
+    try {
+      if (isSignUp) {
+        const result = await signUp(password, username, fullName)
+        if (!result.ok) {
+          setError(result.error || 'Something went wrong.')
+          return
+        }
+      } else {
+        const result = await signIn(identifier, password)
+        if (!result.ok) {
+          setError(result.error || 'Something went wrong.')
+          return
+        }
+      }
+      navigate('/dashboard')
+    } finally {
+      setBusy(false)
     }
-    navigate('/dashboard')
   }
 
   return (
@@ -50,15 +56,21 @@ const Auth: React.FC = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={submit} className="p-6 space-y-4">
+          {error ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+              {error}
+            </div>
+          ) : null}
+
           {isSignUp ? (
             <>
               <div>
-                <label className="text-sm font-semibold">Full name</label>
+                <label className="text-sm font-semibold">Name</label>
                 <input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 outline-none text-slate-900 dark:text-slate-100"
+                  className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2"
                   placeholder="Your name"
                   required
                 />
@@ -68,33 +80,21 @@ const Auth: React.FC = () => {
                 <label className="text-sm font-semibold">Username</label>
                 <input
                   value={username}
-                  onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))}
-                  className="mt-1 w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 outline-none text-slate-900 dark:text-slate-100"
-                  placeholder="sadjuo"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold">Email</label>
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 outline-none text-slate-900 dark:text-slate-100"
-                  placeholder="you@example.com"
-                  type="email"
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2"
+                  placeholder="username"
                   required
                 />
               </div>
             </>
           ) : (
             <div>
-              <label className="text-sm font-semibold">Email or username</label>
+              <label className="text-sm font-semibold">Username</label>
               <input
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                className="mt-1 w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 outline-none text-slate-900 dark:text-slate-100"
-                placeholder="you@example.com or sadjuo"
+                className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2"
+                placeholder="username"
                 required
               />
             </div>
@@ -102,49 +102,40 @@ const Auth: React.FC = () => {
 
           <div>
             <label className="text-sm font-semibold">Password</label>
-            <div className="mt-1 flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3">
+            <div className="mt-1 relative">
               <input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-transparent py-3 outline-none text-slate-900 dark:text-slate-100"
-                placeholder="••••••••"
                 type={showPassword ? 'text' : 'password'}
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2 pr-10"
+                placeholder="••••••••"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
 
-          {error && <div className="text-sm text-red-600">{error}</div>}
-
           <button
-            disabled={loading}
-            className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 transition disabled:opacity-60"
+            type="submit"
+            disabled={busy}
+            className="w-full rounded-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-2 transition disabled:opacity-60"
           >
-            {loading ? 'Please wait…' : isSignUp ? 'Get started' : 'Log in'}
+            {busy ? 'Please wait…' : isSignUp ? 'Create account' : 'Log in'}
           </button>
 
-          {isSignUp && (
-            <div className="text-xs text-slate-600 dark:text-slate-300">
-              By signing up, you agree to our{' '}
-              <Link to="/terms" className="underline">Terms</Link> and{' '}
-              <Link to="/privacy" className="underline">Privacy Policy</Link>.
-            </div>
-          )}
-
-          <div className="text-sm text-slate-600 dark:text-slate-300">
-            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+          <div className="text-sm text-slate-600 dark:text-slate-300 flex items-center justify-center gap-2">
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}
             <button
               type="button"
-              onClick={() => { setIsSignUp((v) => !v); setError(null) }}
-              className="font-bold text-blue-600 hover:underline"
+              onClick={() => setIsSignUp((v) => !v)}
+              className="font-extrabold text-blue-600 dark:text-blue-400 hover:underline"
             >
               {isSignUp ? 'Log in' : 'Sign up'}
             </button>
@@ -152,7 +143,9 @@ const Auth: React.FC = () => {
         </form>
 
         <div className="px-6 pb-6 text-xs text-slate-500">
-          <Link to="/" className="hover:underline">Back to home</Link>
+          <Link to="/" className="hover:underline">
+            Back to home
+          </Link>
         </div>
       </div>
     </div>
