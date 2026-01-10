@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { Profile, supabase } from '../../lib/supabase'
-import { uploadAvatar, uploadBanner } from '../../lib/profileMedia'
+import { uploadAvatar } from '../../lib/profileMedia'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function EditProfileModal({
@@ -25,7 +25,6 @@ export default function EditProfileModal({
   const [telegram, setTelegram] = useState(profile.telegram || '')
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
-  const [bannerFile, setBannerFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
 
   const canSave = useMemo(() => {
@@ -46,7 +45,6 @@ export default function EditProfileModal({
       }
 
       let avatar_url = profile.avatar_url || null
-      let banner_url = profile.banner_url || null
 
       if (avatarFile) {
         try {
@@ -56,15 +54,7 @@ export default function EditProfileModal({
         }
       }
 
-      if (bannerFile) {
-        try {
-          banner_url = await uploadBanner(user.id, bannerFile)
-        } catch (e) {
-          console.warn('Banner upload failed. Create public bucket "banners".', e)
-        }
-      }
-
-      const { error } = await supabase
+            const { error } = await supabase
         .from('profiles')
         .upsert({
           id: user.id,

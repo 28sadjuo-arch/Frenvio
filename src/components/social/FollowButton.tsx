@@ -44,6 +44,7 @@ export default function FollowButton({
       setFollowing(!!data)
     }
     const onFollowUpdated = () => loadFollowing()
+   window.dispatchEvent(new CustomEvent('follow-updated', { detail: { targetUserId } }))
     window.addEventListener('follow-updated', onFollowUpdated)
     loadFollowing()
     return () => {

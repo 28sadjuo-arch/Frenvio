@@ -13,7 +13,7 @@ interface SearchResult {
 const avatarFallback = (seed: string) => `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(seed || '?')}`
 
 const SearchResults: React.FC<{ results: SearchResult[] }> = ({ results }) => {
-  if (!results.length) return <div className="text-sm text-slate-500">Try searching for someone by username.</div>
+  if (!results.length) return <div className="text-sm text-slate-500">No result!.</div>
 
   return (
     <div className="space-y-2">

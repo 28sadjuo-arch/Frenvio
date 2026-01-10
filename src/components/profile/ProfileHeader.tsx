@@ -142,12 +142,10 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
         {/* Avatar + actions */}
         <div className="-mt-10 flex items-end justify-between gap-3">
           <img
-            src={profile.avatar_url || avatarFallback(profile.username || 'user')}
-            className="h-20 w-20 rounded-full border-4 border-white dark:border-slate-900 object-cover bg-white"
-            alt="avatar"
-          />
+  className="h-20 w-20 rounded-full border-4 border-white dark:border-slate-900 object-cover bg-white z-10 relative"
+/>
 
-          <div className="flex items-center gap-2">
+          <div className="-mt-10 flex items-end justify-between gap-3 relative z-10">
             {isMe ? (
               <>
                 <button
@@ -156,6 +154,15 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
                 >
                   Edit profile
                 </button>
+
+                  <button
+  onClick={copyProfileLink}
+  className="p-2 rounded-full border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+  aria-label="Copy profile link"
+>
+  <Share2 className="h-4 w-4" />
+</button>
+             
 
                 <button
                   onClick={copyProfileLink}

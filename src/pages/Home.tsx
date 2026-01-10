@@ -7,10 +7,10 @@ import { useAuth } from '../contexts/AuthContext'
 type FaqItem = { q: string; a: string }
 
 const faqs: FaqItem[] = [
-  { q: 'Who is behind Frenvio?', a: 'Frenvio is built by Amahoro Sadju (Founder/Owner & CEO)' },
+  { q: 'Who is behind Frenvio?', a: 'Frenvio Founded & Owned by Amahoro Sadju' },
   { q: 'Is Frenvio free?', a: 'Yes — Frenvio is free to use. We’re focused on building a great community first.' },
   { q: 'How do I get verified?', a: 'Go to Settings → Request verification. Our team will review your request.' },
-  { q: 'Can I share Anything on Frenvio?', a: 'Yes. Frenvio is Freespeech platfoarm.' },
+  { q: 'Can I share Anything on Frenvio?', a: 'Yes. Frenvio is Freespeech platform.' },
   { q: 'Is Frenvio available on all devices?', a: 'Yes. Frenvio is designed to work smoothly on phones, tablets, and desktop.' },
 ]
 
