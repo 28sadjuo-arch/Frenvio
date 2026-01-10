@@ -34,6 +34,14 @@ const Auth: React.FC = () => {
           setError(result.error || 'Something went wrong.')
           return
         }
+        // If signup succeeded but the project requires email confirmation / no immediate session,
+        // switch to login and let the user sign in with username + password.
+        if (result.error) {
+          setIsSignUp(false)
+          setIdentifier(username)
+          setError(result.error)
+          return
+        }
       } else {
         const result = await signIn(identifier, password)
         if (!result.ok) {

@@ -91,8 +91,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     })
     if (error) return { ok: false, error: error.message }
 
-    // If email confirmations are disabled, we may already have a user id. Upsert profile so username login works.
+    // If your Supabase project has email confirmation ON, signUp may not create a session.
+    // Try to sign-in immediately so we can create/update the profile in the same flow.
     const uid = data.user?.id
+    const session = data.session
+
+    if (!session) {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      if (!signInError) {
+        // Now we are authenticated; upsert profile so username login works immediately.
+        const authedUid = signInData.user?.id
+        if (authedUid) {
+          await supabase.from('profiles').upsert(
+            {
+              id: authedUid,
+              email,
+              username: cleanUsername,
+              display_name: fullName || null,
+            },
+            { onConflict: 'id' },
+          )
+        }
+        return { ok: true }
+      }
+
+      // If sign-in is blocked due to email confirmation settings, still report success but tell user to log in.
+      // (Auth.tsx will handle this and switch to login view.)
+      if (uid) {
+        return { ok: true, error: 'Account created. Please log in to continue.' }
+      }
+      return { ok: false, error: signInError?.message || 'Account created but could not start a session.' }
+    }
+
+    // If we already have a session, we can upsert the profile now.
     if (uid) {
       await supabase.from('profiles').upsert(
         {

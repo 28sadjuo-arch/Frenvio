@@ -9,13 +9,9 @@ const Terms: React.FC = () => (
     </Helmet>
 
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-      <h1 className="text-3xl font-extrabold tracking-tight">Terms of Service</h1>
-      <p className="mt-3 text-slate-600 dark:text-slate-300">
-        By using Frenvio, you agree to these terms. Please read them carefully.
-      </p>
-
+      <h1 className="text-3xl font-extrabold tracking-tight">Terms of Service</h1>      
 <p className="mt-3 text-slate-600 dark:text-slate-300">
-  By using Frenvio, you agree to follow these terms. You’re responsible for what you post, upload, or share, and you
+  By using Frenvio, you agree to follow these terms, Pleasee read them carefully. You’re responsible for what you post, upload, or share, and you
   agree not to misuse the platform (spam, harassment, illegal content, or attempts to break security).
 </p>
 <p className="mt-3 text-slate-600 dark:text-slate-300">

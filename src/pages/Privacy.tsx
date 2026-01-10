@@ -16,7 +16,7 @@ const Privacy: React.FC = () => (
       <h1 className="text-3xl font-extrabold tracking-tight">Privacy Policy</h1>
       <p className="mt-3 text-slate-600 dark:text-slate-300">
         At Frenvio, we respect your privacy. This Privacy Policy explains what information we collect, how we use it, and
-        the choices you have. By using Frenvio, you agree to the collection and use of information as described here.
+        the choices you have. So By using Frenvio, you agree to the collection and use of information as described here.
       </p>
 
       <h2 className="mt-6 text-xl font-extrabold">Information we collect</h2>
@@ -34,7 +34,7 @@ const Privacy: React.FC = () => (
           and actions you take (for example, likes and follows) to help us improve the product.
         </li>
         <li>
-          <span className="font-bold">Device information:</span> limited technical data like browser type, device type, and
+          <span className="font-bold">Device information:</span> limited technical data like browser type, and
           approximate location inferred from IP address (not your precise GPS location).
         </li>
       </ul>
@@ -70,8 +70,7 @@ const Privacy: React.FC = () => (
       <h2 className="mt-6 text-xl font-extrabold">Data retention</h2>
       <p className="mt-2 text-slate-600 dark:text-slate-300">
         We keep your information only as long as necessary to provide the service and meet legal, security, or operational
-        requirements. You can delete certain content from within the app, and you may request account deletion.
-      </p>
+        requirements. You can delete certain content from within the app, and you may request account deletion in  setting and I(Founder & CEO Sadju) will delete it.</p>
 
       <h2 className="mt-6 text-xl font-extrabold">Security</h2>
       <p className="mt-2 text-slate-600 dark:text-slate-300">

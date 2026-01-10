@@ -24,7 +24,7 @@ const Home: React.FC = () => {
     <div className="w-full">
       <Helmet>
         <title>Frenvio — Share, chat, and connect</title>
-        <meta name="description" content="Welcome to Frenvio — where friends share, chat, and connect." />
+        <meta name="description" content="Welcome to Frenvio — where friends Share, Chat, and Connect." />
         <script type="application/ld+json">
           {JSON.stringify({
             '@context': 'https://schema.org',
@@ -75,7 +75,7 @@ const Home: React.FC = () => {
                     </div>
                     <div>
                       <div className="font-extrabold">Follow</div>
-                      <div className="text-sm text-slate-600 dark:text-white/80">Find people you care about and build your circle.</div>
+                      <div className="text-sm text-slate-600 dark:text-white/80">Find & Connect with people.</div>
                     </div>
                   </div>
 
@@ -85,7 +85,7 @@ const Home: React.FC = () => {
                     </div>
                     <div>
                       <div className="font-extrabold">Chat</div>
-                      <div className="text-sm text-slate-600 dark:text-white/80">A clean, modern inbox for messages and groups.</div>
+                      <div className="text-sm text-slate-600 dark:text-white/80">Communicate & Talk with your Friends.</div>
                     </div>
                   </div>
 
@@ -95,7 +95,7 @@ const Home: React.FC = () => {
                     </div>
                     <div>
                       <div className="font-extrabold">Share</div>
-                      <div className="text-sm text-slate-600 dark:text-white/80">Post thoughts, photos, and moments that matter.</div>
+                      <div className="text-sm text-slate-600 dark:text-white/80">Post thoughts, photos, and with your friends.</div>
                     </div>
                   </div>
 
