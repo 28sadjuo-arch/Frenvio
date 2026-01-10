@@ -16,13 +16,13 @@ export default function RichText({ text, className }: Props) {
 
   // Regex matches: URL | @mention | #hashtag
   const pattern =
-    /(https?:\/\/[^\s]+)|(@[a-zA-Z0-9_]{2,30})|(#[a-zA-Z0-9_]{2,50})/g
+    /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(@[a-zA-Z0-9_]{2,30})|(#[a-zA-Z0-9_]{2,50})/g
 
   let lastIndex = 0
   let match: RegExpExecArray | null
 
   while ((match = pattern.exec(text)) !== null) {
-    const [full, url, mention, hashtag] = match
+    const [full, url, www, mention, hashtag] = match
     const start = match.index
     const end = start + full.length
 
@@ -30,17 +30,18 @@ export default function RichText({ text, className }: Props) {
       parts.push(text.slice(lastIndex, start))
     }
 
-    if (url) {
+    if (url || www) {
+      const href = url ? url : `https://${www}`
       parts.push(
         <a
           key={`${start}-${end}`}
-          href={url}
+          href={href}
           target="_blank"
           rel="noreferrer"
           className="text-blue-600 dark:text-blue-400 hover:underline break-all"
           onClick={(e) => e.stopPropagation()}
         >
-          {url}
+          {full}
         </a>
       )
     } else if (mention) {

@@ -130,6 +130,20 @@ const Auth: React.FC = () => {
             {busy ? 'Please wait…' : isSignUp ? 'Create account' : 'Log in'}
           </button>
 
+          {isSignUp ? (
+            <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
+              By signing up, you agree to our{' '}
+              <Link to="/terms" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline" onClick={(e) => e.stopPropagation()}>
+                Terms
+              </Link>
+              {' '}and{' '}
+              <Link to="/privacy" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline" onClick={(e) => e.stopPropagation()}>
+                Privacy Policy
+              </Link>
+              .
+            </div>
+          ) : null}
+
           <div className="text-sm text-slate-600 dark:text-slate-300 flex items-center justify-center gap-2">
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}
             <button

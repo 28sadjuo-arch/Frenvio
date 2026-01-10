@@ -115,6 +115,19 @@ export default function GroupChatRoom({
     })
   }
 
+  // Mark group as read for bottom-nav badge logic
+  useEffect(() => {
+    if (!user || !groupId) return
+    const markRead = async () => {
+      await supabase
+        .from('group_members')
+        .update({ last_read_at: new Date().toISOString() })
+        .eq('group_id', groupId)
+        .eq('user_id', user.id)
+    }
+    markRead()
+  }, [user, groupId])
+
   // Load group + messages
   useEffect(() => {
     if (!user) return

@@ -146,20 +146,41 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const handleLike = async () => {
     if (!user) return
 
-    if (liked) {
-      setLiked(false)
-      setLikes((x) => Math.max(0, x - 1))
-      await supabase.from('post_likes').delete().eq('post_id', post.id).eq('user_id', user.id)
-    } else {
-      setLiked(true)
-      setLikes((x) => x + 1)
-      await supabase.from('post_likes').insert({ post_id: post.id, user_id: user.id })
-      await notify('like')
-    }
+    const nextLiked = !liked
+    // Optimistic UI
+    setLiked(nextLiked)
+    setLikes((x) => (nextLiked ? x + 1 : Math.max(0, x - 1)))
 
-    // best-effort: keep post counters consistent (if columns exist)
-    await supabase.from('posts').update({ likes: liked ? Math.max(0, likes - 1) : likes + 1 }).eq('id', post.id)
-    qc.invalidateQueries({ queryKey: ['posts'] })
+    try {
+      if (nextLiked) {
+        // Upsert avoids duplicate-like errors
+        const { error } = await supabase
+          .from('post_likes')
+          .upsert({ post_id: post.id, user_id: user.id }, { onConflict: 'post_id,user_id' })
+        if (error) throw error
+        await notify('like')
+      } else {
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', post.id)
+          .eq('user_id', user.id)
+        if (error) throw error
+      }
+
+      // Best-effort: keep post counters consistent (if columns exist)
+      await supabase
+        .from('posts')
+        .update({ likes: nextLiked ? likes + 1 : Math.max(0, likes - 1) })
+        .eq('id', post.id)
+
+      qc.invalidateQueries({ queryKey: ['posts'] })
+    } catch (e) {
+      console.error(e)
+      // Revert optimistic UI on failure
+      setLiked(liked)
+      setLikes((x) => (nextLiked ? Math.max(0, x - 1) : x + 1))
+    }
   }
 
   const handleRepost = async () => {

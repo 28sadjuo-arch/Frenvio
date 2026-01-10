@@ -25,6 +25,23 @@ const Home: React.FC = () => {
       <Helmet>
         <title>Frenvio — Share, chat, and connect</title>
         <meta name="description" content="Welcome to Frenvio — where friends share, chat, and connect." />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: 'Frenvio',
+            url: typeof window !== 'undefined' ? window.location.origin : 'https://frenvio.com',
+            description: 'Frenvio is a social platform for sharing posts, chatting, and connecting with friends.',
+            publisher: {
+              '@type': 'Organization',
+              name: 'Frenvio',
+              founder: {
+                '@type': 'Person',
+                name: 'Amahoro Sadju',
+              },
+            },
+          })}
+        </script>
       </Helmet>
 
       {/* HERO */}
@@ -116,7 +133,7 @@ const Home: React.FC = () => {
                   >
                     <div>
                       <div className="font-bold">{item.q}</div>
-                      {isOpen && <div className="mt-2 text-sm text-white/80">{item.a}</div>}
+                      {isOpen && <div className="mt-2 text-sm text-slate-600 dark:text-white/80">{item.a}</div>}
                     </div>
                     <ChevronDown className={`h-5 w-5 mt-0.5 shrink-0 transition ${isOpen ? 'rotate-180' : ''}`} />
                   </button>

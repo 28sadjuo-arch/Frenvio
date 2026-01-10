@@ -142,8 +142,10 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
         {/* Avatar + actions */}
         <div className="-mt-10 flex items-end justify-between gap-3">
           <img
-  className="h-20 w-20 rounded-full border-4 border-white dark:border-slate-900 object-cover bg-white z-10 relative"
-/>
+            src={profile.avatar_url || avatarFallback(profile.username || profile.display_name || 'user')}
+            alt="avatar"
+            className="h-20 w-20 rounded-full border-4 border-white dark:border-slate-900 object-cover bg-white z-10 relative"
+          />
 
           <div className="-mt-10 flex items-end justify-between gap-3 relative z-10">
             {isMe ? (

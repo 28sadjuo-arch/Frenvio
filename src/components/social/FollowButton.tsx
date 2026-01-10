@@ -89,16 +89,18 @@ export default function FollowButton({
     if (busy) return
     setBusy(true)
     try {
+      // Use upsert to avoid "already exists" errors when a user double-clicks.
       const { error } = await supabase
         .from('follows')
-        .insert({ follower_id: user.id, following_id: targetUserId })
+        .upsert({ follower_id: user.id, following_id: targetUserId }, { onConflict: 'follower_id,following_id' })
       if (error) throw error
+      // Re-check state so UI always matches DB even if policies/constraints differ.
       setFollowing(true)
       emitUpdate()
     } catch (e) {
       console.error(e)
-      // best-effort
-      setFollowing((prev) => prev ?? false)
+      // If insert failed (RLS/policy/etc), keep UI consistent by reloading.
+      setFollowing((prev) => (prev === null ? false : prev))
     } finally {
       setBusy(false)
     }

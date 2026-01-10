@@ -7,6 +7,19 @@ import { useAuth } from '../contexts/AuthContext'
 const Notifications: React.FC = () => {
   const { user } = useAuth()
 
+  // Mark notifications as read when this page is opened.
+  React.useEffect(() => {
+    if (!user) return
+    const markAllRead = async () => {
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', user.id)
+        .eq('read', false)
+    }
+    markAllRead()
+  }, [user])
+
   const { data: notifications, isLoading } = useQuery({
     queryKey: ['notifications', user?.id],
     enabled: !!user,
