@@ -338,7 +338,8 @@ const renderTextWithLinks = (text: string) => {
       alert('Could not send message: user not found.')
       return
     }
-    const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type || 'audio/webm' })
+    const file = const ext = (blob.type || '').includes('mp4') ? 'm4a' : (blob.type || '').includes('mpeg') ? 'mp3' : 'webm'
+    const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type || 'audio/webm' })
     setSending(true)
     try {
       const url = await uploadChatMedia(file, roomId)
@@ -376,12 +377,24 @@ const renderTextWithLinks = (text: string) => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const rec = new MediaRecorder(stream)
+
+const preferredTypes = [
+  'audio/mp4;codecs=mp4a.40.2',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/webm;codecs=opus',
+  'audio/webm'
+]
+const mimeType =
+  preferredTypes.find((t) => (window as any).MediaRecorder?.isTypeSupported?.(t)) || ''
+
+const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+
       chunksRef.current = []
       rec.ondataavailable = (ev) => chunksRef.current.push(ev.data)
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop())
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || mimeType || 'audio/webm' })
         if (blob.size > 0) await onPickAudio(blob)
       }
       recordRef.current = rec

@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 type FaqItem = { q: string; a: string }
 
 const faqs: FaqItem[] = [
-  { q: 'Who is behind Frenvio?', a: 'Frenvio Founded & Owned by Amahoro Sadju' },
+  { q: 'Who is behind Frenvio?', a: 'Founder & CEO: Amahoro Sadju' },
   { q: 'Is Frenvio free?', a: 'Yes — Frenvio is free to use. We’re focused on building a great community first.' },
   { q: 'How do I get verified?', a: 'Go to Settings → Request verification. Our team will review your request.' },
   { q: 'Can I share Anything on Frenvio?', a: 'Yes. Frenvio is Freespeech platform.' },
@@ -38,6 +38,7 @@ const Home: React.FC = () => {
               founder: {
                 '@type': 'Person',
                 name: 'Amahoro Sadju',
+                jobTitle: 'Founder & CEO',
               },
             },
           })}
@@ -51,7 +52,7 @@ const Home: React.FC = () => {
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
               Welcome to Frenvio
             </h1>
-            <p className="mt-4 text-2xl sm:text-3xl font-medium leading-snug">
+            <p className="mt-4 text-2xl sm:text-3xl font-normal leading-snug">
               Where friends <span className="text-blue-600 dark:text-white">share</span>, <span className="text-blue-600 dark:text-white">chat</span>, and <span className="text-blue-600 dark:text-white">connect</span>.
             </p>
 
@@ -116,7 +117,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* FAQ (accordion) */}
-      <section className="w-full bg-slate-100 text-slate-900 dark:bg-[#06112B] dark:text-white">
+      <section className="w-full bg-white text-slate-900 dark:bg-[#06112B] dark:text-white">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-12">
           <div className="rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur p-6 sm:p-8">
             <h2 className="text-2xl font-extrabold">FAQ</h2>
@@ -145,7 +146,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* FOOTER */}
-      <section className="w-full bg-slate-100 text-slate-900 dark:bg-[#06112B] dark:text-white">
+      <section className="w-full bg-white text-slate-900 dark:bg-[#06112B] dark:text-white">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-14">
           <div className="rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur p-6 sm:p-8">
             <div className="grid gap-10 md:grid-cols-2">

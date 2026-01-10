@@ -66,7 +66,10 @@ export default function FollowButton({
       setFollowing(!!data)
     }
 
-    const onFollowUpdated = () => loadFollowing()
+    const onFollowUpdated = (e: Event) => {
+      const ce = e as CustomEvent
+      if (ce.detail?.targetUserId === targetUserId) loadFollowing()
+    }
     // cross-component refresh (post cards, profile header, etc.)
     window.addEventListener('follow-updated', onFollowUpdated)
 
@@ -97,6 +100,8 @@ export default function FollowButton({
       if (error) throw error
       // Re-check state so UI always matches DB even if policies/constraints differ.
       setFollowing(true)
+      // Ensure DB write is committed before other components reload.
+      await new Promise((r) => setTimeout(r, 50))
       emitUpdate()
     } catch (e) {
       console.error(e)
@@ -120,6 +125,8 @@ export default function FollowButton({
       if (error) throw error
       setFollowing(false)
       setMenuOpen(false)
+      // Ensure DB delete is committed before other components reload.
+      await new Promise((r) => setTimeout(r, 50))
       emitUpdate()
     } catch (e) {
       console.error(e)

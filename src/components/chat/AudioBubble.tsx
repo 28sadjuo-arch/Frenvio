@@ -136,6 +136,11 @@ export default function AudioBubble({
       >
         <div className="text-sm font-bold">Voice note</div>
         <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{error}</div>
+        {error && isIOS && /\.webm(\?|$)/i.test(resolvedSrc) ? (
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            This voice note may be in a format iPhone doesn’t support. Please re-record and resend.
+          </div>
+        ) : null}
 
         {/* Always provide a native fallback so it plays on PC */}
         <audio className="mt-2 w-full" controls preload="metadata" crossOrigin="anonymous" src={resolvedSrc} />

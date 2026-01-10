@@ -14,6 +14,18 @@ const Terms: React.FC = () => (
         By using Frenvio, you agree to these terms. Please read them carefully.
       </p>
 
+<p className="mt-3 text-slate-600 dark:text-slate-300">
+  By using Frenvio, you agree to follow these terms. You’re responsible for what you post, upload, or share, and you
+  agree not to misuse the platform (spam, harassment, illegal content, or attempts to break security).
+</p>
+<p className="mt-3 text-slate-600 dark:text-slate-300">
+  We may update features, improve safety, or enforce rules when needed. If we believe activity violates these terms
+  or harms others, we may take action (content removal, temporary restrictions, or account suspension).
+</p>
+<p className="mt-3 text-slate-600 dark:text-slate-300">
+  If you have questions, contact us. Also review our <Link className="text-blue-600 dark:text-blue-400" to="/privacy">Privacy Policy</Link>.
+</p>
+
       <h2 className="mt-6 text-xl font-extrabold">1. Your account</h2>
       <ul className="mt-2 list-disc pl-5 text-slate-600 dark:text-slate-300 space-y-1">
         <li>You are responsible for your account and activity.</li>

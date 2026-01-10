@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Heart,
@@ -52,6 +52,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [liked, setLiked] = useState<boolean>(false)
   const [reposted, setReposted] = useState<boolean>(false)
   const [likes, setLikes] = useState<number>(0)
+  const likeOperationRef = useRef(false)
   const [reposts, setReposts] = useState<number>(0)
   const [commentsCount, setCommentsCount] = useState<number>(0)
 
@@ -145,47 +146,54 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   }
 
   const handleLike = async () => {
-    if (!user) return
+  if (!user) return
+  if (likeOperationRef.current) return
+  likeOperationRef.current = true
 
-    const prevLiked = liked
-    const nextLiked = !prevLiked
+  const prevLiked = liked
+  const nextLiked = !prevLiked
 
-    // Optimistic UI
-    setLiked(nextLiked)
-    setLikes((x) => (nextLiked ? x + 1 : Math.max(0, x - 1)))
+  // Capture counts at click time to avoid stale closures.
+  const prevLikesCount = likes
+  const nextLikesCount = nextLiked ? prevLikesCount + 1 : Math.max(0, prevLikesCount - 1)
 
-    try {
-      if (nextLiked) {
-        // Upsert avoids duplicate-like errors
-        const { error } = await supabase
-          .from('post_likes')
-          .upsert({ post_id: post.id, user_id: user.id }, { onConflict: 'post_id,user_id' })
-        if (error) throw error
-        await notify('like')
-      } else {
-        const { error } = await supabase
-          .from('post_likes')
-          .delete()
-          .eq('post_id', post.id)
-          .eq('user_id', user.id)
-        if (error) throw error
-      }
+  // Optimistic UI
+  setLiked(nextLiked)
+  setLikes(nextLikesCount)
 
-      // Best-effort: keep post counters consistent (if columns exist)
-      // Use the optimistic value we set, not stale closure values.
-      await supabase
-        .from('posts')
-        .update({ likes: nextLiked ? likes + 1 : Math.max(0, likes - 1) })
-        .eq('id', post.id)
-
-      qc.invalidateQueries({ queryKey: ['posts'] })
-    } catch (e) {
-      console.error(e)
-      // Revert optimistic UI on failure
-      setLiked(prevLiked)
-      setLikes((x) => (nextLiked ? Math.max(0, x - 1) : x + 1))
+  try {
+    if (nextLiked) {
+      const { error } = await supabase
+        .from('post_likes')
+        .upsert({ post_id: post.id, user_id: user.id }, { onConflict: 'post_id,user_id' })
+      if (error) throw error
+      await notify('like')
+    } else {
+      const { error } = await supabase
+        .from('post_likes')
+        .delete()
+        .eq('post_id', post.id)
+        .eq('user_id', user.id)
+      if (error) throw error
     }
+
+    // Small delay avoids race with immediate refetch/invalidation.
+    await new Promise((r) => setTimeout(r, 120))
+
+    // Best-effort: keep post counters consistent (if columns exist)
+    await supabase.from('posts').update({ likes: nextLikesCount }).eq('id', post.id)
+
+    qc.invalidateQueries({ queryKey: ['posts'] })
+  } catch (e) {
+    console.error(e)
+    // Revert optimistic UI on failure
+    setLiked(prevLiked)
+    setLikes(prevLikesCount)
+  } finally {
+    likeOperationRef.current = false
   }
+}
+
 
   const handleRepost = async () => {
     if (!user) return
