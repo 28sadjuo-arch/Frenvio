@@ -5,10 +5,14 @@ export default async function handler(req, res) {
   }
 
   const message = String(req.body?.message || '').trim()
-  if (!message) return res.status(400).json({ error: 'Invalid message' })
+  if (!message) {
+    return res.status(400).json({ error: 'Invalid message' })
+  }
 
   const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) return res.status(500).json({ error: 'Missing GEMINI_API_KEY' })
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Missing GEMINI_API_KEY' })
+  }
 
   try {
     const r = await fetch(
@@ -17,11 +21,12 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: message }] }],
-          systemInstruction: {
-            parts: [
-              {
-                text: `
+          contents: [
+            {
+              role: 'system',
+              parts: [
+                {
+                  text: `
 You are Frenvio AI.
 
 About Frenvio:
@@ -39,22 +44,37 @@ Rules:
 - Answer in plain text only.
 - Do NOT generate code or code blocks.
 - Do NOT generate images.
-- Have some sense of humor to make it fun.
+- Be funny with laughing emojis in funny moment.
 - If asked for code, explain in simple words instead.
 - Be friendly, clear, and helpful.
 `
-              }
-            ]
-          },
-          generationConfig: { temperature: 0.7, maxOutputTokens: 400 }
+                }
+              ]
+            },
+            {
+              role: 'user',
+              parts: [{ text: message }]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 300
+          }
         })
       }
     )
 
-    const data = await r.json().catch(() => null)
+    const data = await r.json()
+
     const reply =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      'Sorry, I could not generate a response.'
+      data?.candidates?.[0]?.content?.parts?.[0]?.text
+
+    if (!reply) {
+      console.error('Gemini empty response:', JSON.stringify(data))
+      return res.status(200).json({
+        reply: "Sorry, I couldn't generate a response."
+      })
+    }
 
     return res.status(200).json({ reply })
   } catch (e) {
