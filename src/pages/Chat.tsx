@@ -441,7 +441,6 @@ return (
         {tab === 'ai' && (
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
             <div className="p-3 border-b border-slate-200 dark:border-slate-800 text-sm font-bold">Frenvio AI</div>
-            <div className="p-4 text-sm text-slate-600 dark:text-slate-300">Coming soon.</div>
             <button
               className="m-4 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold"
               onClick={() => setSelected({ kind: 'ai' })}

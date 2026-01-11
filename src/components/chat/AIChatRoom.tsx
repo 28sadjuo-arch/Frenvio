@@ -11,17 +11,34 @@ function localAnswer(prompt: string) {
   return "I’m Frenvio AI. I can answer questions, suggest ideas, and help troubleshoot. What do you want to do?"
 }
 
+// ✅ This version shows the REAL error instead of silently falling back
 async function callApi(prompt: string): Promise<string> {
-  const res = await fetch('/api/ai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: prompt }),
-  })
+  let res: Response | null = null
+  try {
+    res = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: prompt }),
+    })
+  } catch (e: any) {
+    return `⚠️ Frenvio AI backend not reachable. (Network error)\n\n${String(e?.message || e)}`
+  }
 
-  if (!res.ok) return localAnswer(prompt)
+  // If Vercel returns 404/500, show the real status + body snippet
+  if (!res.ok) {
+    const bodyText = await res.text().catch(() => '')
+    const snippet = bodyText ? bodyText.slice(0, 300) : ''
+    return `⚠️ Frenvio AI error calling /api/ai\nStatus: ${res.status} ${res.statusText}\n\n${snippet || '(no response body)'}`
+  }
 
   const data = await res.json().catch(() => null)
-  return data?.reply || localAnswer(prompt)
+  const reply = data?.reply
+
+  if (typeof reply === 'string' && reply.trim()) {
+    return reply.trim()
+  }
+
+  return `⚠️ Frenvio AI returned no reply field.\nResponse: ${JSON.stringify(data)}`
 }
 
 const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
@@ -42,13 +59,29 @@ const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
 
   const send = async () => {
     const prompt = text.trim()
-    if (!prompt) return
+    if (!prompt || loading) return
+
     setText('')
-    const userMsg: AiMsg = { id: crypto.randomUUID(), role: 'user', content: prompt, created_at: new Date().toISOString() }
+
+    const userMsg: AiMsg = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: prompt,
+      created_at: new Date().toISOString(),
+    }
+
     setMessages((p) => [...p, userMsg])
     setLoading(true)
-    const answer = await callApi(prompt).catch(() => localAnswer(prompt))
-    const botMsg: AiMsg = { id: crypto.randomUUID(), role: 'assistant', content: answer, created_at: new Date().toISOString() }
+
+    const answer = await callApi(prompt).catch((e) => `⚠️ AI failed: ${String(e)}`)
+
+    const botMsg: AiMsg = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: answer || localAnswer(prompt),
+      created_at: new Date().toISOString(),
+    }
+
     setMessages((p) => [...p, botMsg])
     setLoading(false)
   }
@@ -107,7 +140,11 @@ const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
               }
             }}
           />
-          <button onClick={send} className="px-4 py-3 rounded-2xl bg-blue-600 text-white font-semibold hover:bg-blue-700 flex items-center gap-2">
+          <button
+            onClick={send}
+            disabled={loading}
+            className="px-4 py-3 rounded-2xl bg-blue-600 text-white font-semibold hover:bg-blue-700 flex items-center gap-2 disabled:opacity-60"
+          >
             <Send className="h-4 w-4" /> Send
           </button>
         </div>
