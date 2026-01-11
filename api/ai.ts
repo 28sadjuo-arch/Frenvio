@@ -1,13 +1,10 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // ✅ Always allow POST only
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
-    return res.status(405).send('')
+    return res.status(405).end()
   }
 
-  const message = (req.body?.message ?? '').toString().trim()
+  const message = String(req.body?.message || '').trim()
   if (!message) return res.status(400).json({ error: 'Invalid message' })
 
   const apiKey = process.env.GEMINI_API_KEY
