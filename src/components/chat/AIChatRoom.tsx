@@ -6,27 +6,22 @@ type AiMsg = { id: string; role: 'user' | 'assistant'; content: string; created_
 function localAnswer(prompt: string) {
   const p = prompt.toLowerCase()
   if (p.includes('help') || p.includes('how')) return "Tell me what you're trying to do and I’ll guide you step by step."
-  if (p.includes('frenvio')) return "Frenvio AI here. Ask me anything about Frenvio, social media ideas, or coding."
+  if (p.includes('frenvio')) return "Frenvio AI here. Ask me anything about Frenvio or Anything."
   if (p.includes('sql')) return "If you're pasting SQL in Supabase, share the error line and I’ll fix it."
   return "I’m Frenvio AI. I can answer questions, suggest ideas, and help troubleshoot. What do you want to do?"
 }
 
 async function callApi(prompt: string): Promise<string> {
-  const url = import.meta.env.VITE_AI_API_URL as string | undefined
-  const key = import.meta.env.VITE_AI_API_KEY as string | undefined
-  if (!url) return localAnswer(prompt)
-
-  const res = await fetch(url, {
+  const res = await fetch('/api/ai', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(key ? { Authorization: `Bearer ${key}` } : {}),
-    },
-    body: JSON.stringify({ prompt }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: prompt }),
   })
+
   if (!res.ok) return localAnswer(prompt)
+
   const data = await res.json().catch(() => null)
-  return data?.text || data?.answer || data?.message || localAnswer(prompt)
+  return data?.reply || localAnswer(prompt)
 }
 
 const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
