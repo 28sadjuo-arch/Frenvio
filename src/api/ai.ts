@@ -1,29 +1,26 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // ✅ Always allow POST only
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    res.setHeader('Allow', 'POST')
+    return res.status(405).send('')
   }
 
-  const { message } = req.body
+  const message = (req.body?.message ?? '').toString().trim()
+  if (!message) return res.status(400).json({ error: 'Invalid message' })
 
-  if (!message || typeof message !== 'string') {
-    return res.status(400).json({ error: 'Invalid message' })
-  }
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) return res.status(500).json({ error: 'Missing GEMINI_API_KEY' })
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: message }]
-            }
-          ],
+          contents: [{ role: 'user', parts: [{ text: message }] }],
           systemInstruction: {
             parts: [
               {
@@ -52,23 +49,19 @@ Rules:
               }
             ]
           },
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 400
-          }
+          generationConfig: { temperature: 0.7, maxOutputTokens: 400 }
         })
       }
     )
 
-    const data = await response.json()
-
-    const text =
+    const data = await r.json().catch(() => null)
+    const reply =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       'Sorry, I could not generate a response.'
 
-    res.status(200).json({ reply: text })
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ error: 'AI request failed' })
+    return res.status(200).json({ reply })
+  } catch (e) {
+    console.error(e)
+    return res.status(500).json({ error: 'AI request failed' })
   }
 }
