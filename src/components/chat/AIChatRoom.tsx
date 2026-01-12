@@ -1,3 +1,5 @@
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import React, { useEffect, useRef, useState } from 'react'
 import { Bot, Send } from 'lucide-react'
 
@@ -118,7 +120,29 @@ const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100'
               }`}
             >
-              <div className="whitespace-pre-wrap break-words">{m.content}</div>
+              {m.role === 'assistant' ? (
+  <ReactMarkdown
+    remarkPlugins={[remarkGfm]}
+    components={{
+      a: ({ node, ...props }) => (
+        <a
+          {...props}
+          target="_blank"
+          rel="noreferrer"
+          className="underline text-blue-600 dark:text-blue-400"
+        />
+      ),
+      // hide code blocks completely (you requested no code generation)
+      code: () => null,
+      pre: () => null,
+    }}
+  >
+    {m.content}
+  </ReactMarkdown>
+) : (
+  <div className="whitespace-pre-wrap break-words">{m.content}</div>
+)}
+
             </div>
           </div>
         ))}

@@ -1,3 +1,4 @@
+// api/ai.js
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -10,7 +11,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return res.status(500).json({ error: 'Missing GEMINI_API_KEY' })
 
-  // ✅ Update these to match your real routes if different
+  // ✅ Update these if your real routes differ
   const LINKS = {
     home: 'https://frenvio.com',
     about: 'https://frenvio.com/about',
@@ -20,22 +21,19 @@ export default async function handler(req, res) {
     contact: 'https://frenvio.com/contact'
   }
 
-  // 🔥 Frenvio knowledge base (edit anytime)
+  // ✅ Keep KB factual + professional (avoid private stuff to all users)
   const FRENVI0_KB = `
-Frenvio is a social platform for sharing posts, chatting in direct messages and groups, and discovering people and content through hashtags.
-Frenvio contain 2 words;FREN+VIO, FREN stand for Friends And VIO is latin verb from form VIA meaning WAY or ROAD,
-so FRENVIO is a way for frendship through connection and communication.
-Founder & CEO: Amahoro Sadju. (If asked age and only the year 2003 is known, do NOT claim exact age. Say “born in 2003” or exact age depending on birthday and current date.)
-Frenvio Co founder is Ines olga.
-ABOUT Amahoro Sadju: Founder/Owner and CEO of frenvio, born and raised in Rwanda, born on 12 september 2003, his usernames on social media like ig and x is sadjuo and frenvio is sadju ,he is single, He is christian, he loves tech and online stuff,he love sports.
+Frenvio is a social platform for sharing posts, chatting (DMs and groups), and discovering people and content through hashtags.
+Name meaning: "Fren" (friends) + "Vio" (inspired by "via" meaning a way/road) — a way to connect and communicate.
+Founder & CEO: Amahoro Sadju (born 2003). Co-founder: Ines Olga.
 
 Key features:
-- Posts: users can share updates and media.
-- Hashtags: discover posts by tags.
-- Follow system: connect with people.
-- Chat: DMs and groups.
-- Notifications: updates about activity.
-- Profile: avatar, bio, and social handles.
+- Posts (text + media)
+- Hashtags (tap to explore)
+- Follow system
+- Chat (inbox + groups)
+- Notifications
+- Profiles (avatar, bio, social handles)
 
 Official Frenvio pages:
 - Home: ${LINKS.home}
@@ -46,51 +44,113 @@ Official Frenvio pages:
 - Contact: ${LINKS.contact}
 `
 
+  // --- Live crypto prices (fast + real) ---
+  async function tryCryptoPrice(text) {
+    const t = text.toLowerCase()
+
+    // match common coins (extend anytime)
+    const match = t.match(/\b(btc|bitcoin|eth|ethereum|sol|solana|bnb|xrp|doge|ada)\b/)
+    if (!match) return null
+
+    const map = {
+      btc: 'bitcoin', bitcoin: 'bitcoin',
+      eth: 'ethereum', ethereum: 'ethereum',
+      sol: 'solana', solana: 'solana',
+      bnb: 'binancecoin',
+      xrp: 'ripple',
+      doge: 'dogecoin',
+      ada: 'cardano'
+    }
+
+    const id = map[match[1]]
+    if (!id) return null
+
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(id)}&vs_currencies=usd`
+    const r = await fetch(url)
+    if (!r.ok) return null
+
+    const data = await r.json().catch(() => null)
+    const price = data?.[id]?.usd
+    if (typeof price !== 'number') return null
+
+    return { id, usd: price }
+  }
+
+  // If question is “price of BTC” etc., answer directly (saves Gemini usage)
+  try {
+    const crypto = await tryCryptoPrice(message)
+    if (crypto) {
+      const coinName = crypto.id.charAt(0).toUpperCase() + crypto.id.slice(1)
+      return res.status(200).json({
+        reply:
+          `**${coinName}** is about **$${crypto.usd.toLocaleString()}** right now.\n\n` +
+          `_Tip:_ Prices move fast — check again before making decisions 🙂`
+      })
+    }
+  } catch {
+    // ignore crypto failures and continue to Gemini
+  }
+
   const SYSTEM = `
-You are Frenvio AI — the official assistant inside the Frenvio app.
+You are **Frenvio AI** — the official assistant inside the Frenvio app.
 
 IDENTITY:
 - Always remember you are “Frenvio AI”.
-- You can answer Frenvio questions AND general knowledge questions.
-- When a question is about Frenvio, prioritize the Frenvio knowledge base and link to the right Frenvio page.
--You can browse on google or use live data for finance celebrity new,etc...
+- You answer both Frenvio questions AND general knowledge questions.
+- If a question is about Frenvio, prioritize the Frenvio knowledge base and include the most relevant Frenvio link.
 
 STYLE:
-- Friendly, modern, clear. Not boring.
-- Use emojis sometimes (max 1–2 per message, not every message).
-- Keep answers short unless the user asks for detail.
-- Use bullet points for steps/lists.
--use ABOUT Amahoro sadju info when asked only (if you asked who is founder reply names only, if they ask age calculate age well and reply,and all info just use them when asked.)
--When you asked about Amahoro sadju end with text how you love him with emotion emoji.
--Be more entertaining don't be boring to user.
+- Friendly, modern, clear, not boring.
+- Match the user’s vibe (e.g. “hey bro” → casual response).
+- Light humor is welcome (modern/gen-Z style), but don’t be rude.
+- Use emojis sometimes (max 1–2 per message).
+- Use **bold** for important words and bullet points for steps.
 
-TEXT-ONLY RULES:
-- Output plain text only.
+IMPORTANT BEHAVIOR:
+- Do NOT copy-paste the knowledge base text. **Paraphrase in your own words**.
+- Don’t say “I’m programmed” or “as an AI model”. Just respond naturally.
+- If user asks “why do you like the founder?”, answer warmly and playfully without mentioning programming.
+
+TEXT ONLY:
+- Output plain text + markdown (**bold**, lists, links).
 - Do NOT generate images.
 - Do NOT generate programming code or code blocks.
-- If asked for code, explain at a high level in simple words.
+- If asked for code, explain in simple words (no code).
 
-MATH / ACCURACY:
+MATH & ACCURACY:
 - Do calculations carefully.
-- If unsure, say you’re not sure.
-- If user provides only a birth YEAR, and compute exact age according to year we are in now.
+- If user provides only a birth YEAR, do NOT claim an exact age.
+  Say “born in 2003” or “around X–Y depending on birthday and today’s date”.
+- If user provides full birthdate (YYYY-MM-DD), you may compute exact age.
 
-LINKS:
-- You do not have live browsing by default.
-- You may link confidently to Frenvio official pages from the provided list.
-- For outside-Frenvio topics, only provide links if you’re confident they are official sources; otherwise say you can’t browse live web and suggest what to search.
+LIVE DATA + LINKS:
+- You CAN use Google grounding (search) to get fresh info.
+- Provide links when helpful. Prefer official sources.
+- For Frenvio links, always use the official Frenvio pages.
+
+HIGH-STAKES TOPICS (finance, politics, legal, medical):
+- Provide balanced, cautious guidance.
+- Avoid telling users to take risky actions as if guaranteed.
+- Encourage checking official sources and/or professionals.
 
 FRENVI0 KNOWLEDGE BASE:
 ${FRENVI0_KB}
 `
 
-  // ✅ Use Gemini model
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
 
   const payload = {
     system_instruction: { parts: [{ text: SYSTEM }] },
     contents: [{ role: 'user', parts: [{ text: message }] }],
-    generationConfig: { temperature: 0.7, maxOutputTokens: 450 }
+
+    // ✅ Google live grounding
+    tools: [{ google_search: {} }],
+
+    generationConfig: {
+      temperature: 0.75,
+      maxOutputTokens: 520
+    }
   }
 
   try {
@@ -102,14 +162,17 @@ ${FRENVI0_KB}
 
     const data = await r.json().catch(() => null)
 
-    // Friendly quota handling
+    // friendly quota handling
     if (!r.ok) {
       if (r.status === 429) {
         return res.status(200).json({
           reply: "I’m getting a lot of requests right now 😅 Try again in a moment."
         })
       }
-      return res.status(r.status).json({ error: 'Gemini API error', details: data || null })
+      return res.status(r.status).json({
+        error: 'Gemini API error',
+        details: data || null
+      })
     }
 
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text
@@ -122,6 +185,9 @@ ${FRENVI0_KB}
     return res.status(200).json({ reply: String(reply).trim() })
   } catch (e) {
     console.error(e)
-    return res.status(500).json({ error: 'AI request failed', details: String(e?.message || e) })
+    return res.status(500).json({
+      error: 'AI request failed',
+      details: String(e?.message || e)
+    })
   }
 }
