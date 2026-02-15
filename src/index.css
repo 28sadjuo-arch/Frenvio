@@ -3,92 +3,82 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== Modern Social UI Redesign ===== */
+/* ===== Human-looking, non-card social UI =====
+   - No forced light theme (keeps existing dark mode logic)
+   - Wider desktop layout
+   - Posts separated with a single divider line
+*/
 
-:root {
-  --bg-main: #f8fafc;
-  --bg-surface: #ffffff;
-  --border-soft: #e5e7eb;
-  --text-primary: #111827;
-  --text-muted: #6b7280;
+@layer base {
+  :root {
+    --app-bg: 255 255 255;
+    --app-fg: 15 23 42;
+    --app-muted: 100 116 139;
+    --app-border: 226 232 240;
+    --app-hover: 248 250 252;
+  }
+
+  .dark {
+    --app-bg: 2 6 23;
+    --app-fg: 226 232 240;
+    --app-muted: 148 163 184;
+    --app-border: 30 41 59;
+    --app-hover: 15 23 42;
+  }
+
+  body {
+    background: rgb(var(--app-bg));
+    color: rgb(var(--app-fg));
+  }
 }
 
-body {
-  background-color: var(--bg-main);
-  color: var(--text-primary);
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-}
-
-/* Remove heavy card feeling globally */
-.card,
-[class*="card"],
-.bg-white {
-  background: var(--bg-surface) !important;
-  border-radius: 16px !important;
-  border: 1px solid var(--border-soft) !important;
-  box-shadow: none !important;
-}
-
-/* Feed-style spacing */
+/* App page width: comfortable on desktop, good on mobile */
 main {
-  max-width: 680px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 16px 12px;
 }
 
-/* Clean section separation instead of cards everywhere */
-section {
-  margin-bottom: 28px;
+@media (min-width: 768px) {
+  main {
+    padding: 22px 18px;
+  }
 }
 
-/* Better typography hierarchy */
-h1 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+/* Feed column: keep content readable but not tiny on desktop */
+.feed {
+  max-width: 720px;
+  margin: 0 auto;
 }
 
-h2 {
-  font-size: 1.4rem;
-  font-weight: 600;
+/* Remove "everything is a card" feel: flatten common surfaces */
+.bg-white,
+.dark .dark\:bg-slate-900,
+.dark .dark\:bg-slate-950 {
+  background: transparent !important;
 }
 
-p {
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: var(--text-primary);
+/* If components used rounded+border as cards, soften them globally */
+.rounded-2xl,
+.rounded-xl {
+  border-radius: 0 !important;
 }
 
-small,
-.text-muted {
-  color: var(--text-muted);
+/* Divider utility */
+.divider-b {
+  border-bottom: 1px solid rgb(var(--app-border));
 }
 
-/* Buttons cleaner look */
-button {
-  border-radius: 999px !important;
-  padding: 8px 16px !important;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-button:hover {
-  transform: translateY(-1px);
-}
-
-/* Inputs modern style */
-input,
-textarea {
-  border-radius: 12px !important;
-  border: 1px solid var(--border-soft) !important;
-  padding: 10px 14px !important;
-  background: white;
-}
-
-input:focus,
-textarea:focus {
+/* Inputs: keep existing classes working, only improve focus */
+input, textarea, select {
   outline: none;
-  border-color: #6366f1 !important;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+input:focus, textarea:focus, select:focus {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* Buttons: prevent overflow on mobile */
+button {
+  max-width: 100%;
 }

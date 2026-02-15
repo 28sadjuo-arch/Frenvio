@@ -47,8 +47,8 @@ const Home: React.FC = () => {
 
       {/* HERO */}
       <section className="w-full bg-gradient-to-b from-white via-white to-white text-slate-900 dark:from-[#050B1D] dark:via-[#06112B] dark:to-[#06112B] dark:text-white">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-14 sm:py-20">
-          <div className="max-w-3xl">
+        <div className="feed">
+          <div className="feed">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
               Welcome to Frenvio
             </h1>
@@ -118,7 +118,7 @@ const Home: React.FC = () => {
 
       {/* FAQ (accordion) */}
       <section className="w-full bg-white text-slate-900 dark:bg-[#06112B] dark:text-white">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-12">
+        <div className="feed">
           <div className="rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur p-6 sm:p-8">
             <h2 className="text-2xl font-extrabold">FAQ</h2>
 
@@ -147,7 +147,7 @@ const Home: React.FC = () => {
 
       {/* FOOTER */}
       <section className="w-full bg-white text-slate-900 dark:bg-[#06112B] dark:text-white">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 pb-14">
+        <div className="feed">
           <div className="rounded-3xl border border-slate-200/60 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur p-6 sm:p-8">
             <div className="grid gap-10 md:grid-cols-2">
               <div>
