@@ -1,14 +1,94 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background-color: #f8fafc;
+/* ===== Modern Social UI Redesign ===== */
+
+:root {
+  --bg-main: #f8fafc;
+  --bg-surface: #ffffff;
+  --border-soft: #e5e7eb;
+  --text-primary: #111827;
+  --text-muted: #6b7280;
 }
 
-.dark {
-  background-color: #0f172a;
-  color: #f1f5f9;
+body {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* Remove heavy card feeling globally */
+.card,
+[class*="card"],
+.bg-white {
+  background: var(--bg-surface) !important;
+  border-radius: 16px !important;
+  border: 1px solid var(--border-soft) !important;
+  box-shadow: none !important;
+}
+
+/* Feed-style spacing */
+main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* Clean section separation instead of cards everywhere */
+section {
+  margin-bottom: 28px;
+}
+
+/* Better typography hierarchy */
+h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+small,
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* Buttons cleaner look */
+button {
+  border-radius: 999px !important;
+  padding: 8px 16px !important;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+/* Inputs modern style */
+input,
+textarea {
+  border-radius: 12px !important;
+  border: 1px solid var(--border-soft) !important;
+  padding: 10px 14px !important;
+  background: white;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
