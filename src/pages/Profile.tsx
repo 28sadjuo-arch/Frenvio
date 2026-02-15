@@ -38,7 +38,7 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="feed space-y-4">
+    <div className="space-y-4">
       <ProfileHeader profile={profile} onUpdated={() => refetch()} />
 
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">

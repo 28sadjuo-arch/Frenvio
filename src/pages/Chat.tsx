@@ -288,7 +288,7 @@ useEffect(() => {
 
   
 return (
-    <div className="feed">
+    <div className="mx-auto w-full max-w-6xl px-3 md:px-4 py-3 md:py-4 flex gap-4">
       {/* Left panel */}
       <div
         className={`w-full md:w-[380px] md:shrink-0 space-y-3 ${
@@ -492,7 +492,7 @@ return (
       {createOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setCreateOpen(false)}>
           <div
-            className="feed"
+            className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 font-bold">Create group</div>
