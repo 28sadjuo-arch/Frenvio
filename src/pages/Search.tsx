@@ -1,46 +1,75 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search as SearchIcon } from 'lucide-react'
+import { Search as SearchIcon, Users, Hash } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { Post, supabase } from '../lib/supabase'
 import SearchResults from '../components/search/SearchResults'
 import PostCard from '../components/social/PostCard'
 
+// Simple debounce hook (prevents querying on every keystroke)
+function useDebounce(value: string, delay = 350) {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+
+  return debounced
+}
+
 const Search: React.FC = () => {
   const [params] = useSearchParams()
   const urlQ = params.get('q') || ''
   const [query, setQuery] = useState(urlQ)
+  const [activeTab, setActiveTab] = useState<'users' | 'posts'>('users')
+
+  const debouncedQuery = useDebounce(query.trim(), 400)
 
   useEffect(() => {
-    // Sync when arriving from hashtag links
+    // Sync from URL (e.g. clicking #hashtag link)
     setQuery(urlQ)
   }, [urlQ])
 
-  const isHashtag = useMemo(() => query.trim().startsWith('#'), [query])
-  const tag = useMemo(() => query.trim().replace(/^#+/, ''), [query])
+  const isHashtagSearch = useMemo(() => debouncedQuery.startsWith('#'), [debouncedQuery])
+  const cleanTag = useMemo(() => debouncedQuery.replace(/^#+/, '').trim(), [debouncedQuery])
 
-  const { data: people, isFetching: peopleLoading } = useQuery({
-    queryKey: ['search-people', query],
+  // Auto-switch tab when typing #
+  useEffect(() => {
+    if (isHashtagSearch && activeTab !== 'posts') {
+      setActiveTab('posts')
+    }
+  }, [isHashtagSearch, activeTab])
+
+  // Users: prefix search (starts with ...)
+  const { data: people = [], isFetching: peopleLoading } = useQuery({
+    queryKey: ['search-people', debouncedQuery],
     queryFn: async () => {
-      if (!query.trim() || isHashtag) return []
+      if (!debouncedQuery || isHashtagSearch) return []
+
+      // Prefix search: username or display_name STARTS WITH query
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, display_name, verified, avatar_url')
-        .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+        .or(`username.ilike.${debouncedQuery}%,display_name.ilike.${debouncedQuery}%`)
         .limit(20)
 
-      if (error) return []
+      if (error) {
+        console.error('People search error:', error)
+        return []
+      }
       return data || []
     },
-    enabled: query.trim().length > 0,
+    enabled: debouncedQuery.length > 0 && !isHashtagSearch,
   })
 
-  const { data: posts, isFetching: postsLoading } = useQuery({
-    queryKey: ['search-posts', tag],
+  // Posts: hashtag search
+  const { data: posts = [], isFetching: postsLoading } = useQuery({
+    queryKey: ['search-posts', cleanTag],
     queryFn: async () => {
-      if (!tag) return []
-      // Best-effort: search posts that contain the hashtag in content
-      const needle = `#${tag}`
+      if (!cleanTag) return []
+
+      const needle = `#${cleanTag}`
       const { data, error } = await supabase
         .from('posts')
         .select('id, user_id, content, image_url, likes, reposts, created_at')
@@ -48,43 +77,97 @@ const Search: React.FC = () => {
         .order('created_at', { ascending: false })
         .limit(50)
 
-      if (error) return []
+      if (error) {
+        console.error('Posts search error:', error)
+        return []
+      }
       return (data || []) as Post[]
     },
-    enabled: isHashtag && tag.length > 0,
+    enabled: isHashtagSearch && cleanTag.length > 0,
   })
 
-  return (
-    <div className="mx-auto w-full max-w-3xl px-4 pt-4">
-      <h1 className="text-xl font-extrabold tracking-tight mb-3">Search</h1>
+  const isLoading = peopleLoading || postsLoading
+  const showUsersTab = activeTab === 'users' && !isHashtagSearch
+  const showPostsTab = activeTab === 'posts' || isHashtagSearch
 
-      <div className="flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2">
-        <SearchIcon className="h-4 w-4 text-slate-500" />
+  return (
+    <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 pt-4 pb-10">
+      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-4">
+        Search
+      </h1>
+
+      {/* Search input */}
+      <div className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 shadow-sm">
+        <SearchIcon className="h-5 w-5 text-slate-500 dark:text-slate-400" />
         <input
           type="text"
-          placeholder="Search people or #tags…"
+          placeholder="Search people or #hashtags…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full bg-transparent outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+          className="flex-1 bg-transparent outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-base"
+          autoFocus
         />
       </div>
 
-      {(peopleLoading || postsLoading) && <div className="mt-3 text-sm text-slate-500">Searching…</div>}
+      {/* Tabs */}
+      {debouncedQuery.length > 0 && (
+        <div className="mt-5 flex border-b border-slate-700">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex-1 py-3 px-4 text-center font-medium transition ${
+              showUsersTab
+                ? 'border-b-2 border-blue-500 text-blue-500'
+                : 'text-slate-400 hover:text-slate-300'
+            }`}
+          >
+            <Users className="h-4 w-4 inline mr-1.5" />
+            Users
+          </button>
+          <button
+            onClick={() => setActiveTab('posts')}
+            className={`flex-1 py-3 px-4 text-center font-medium transition ${
+              showPostsTab
+                ? 'border-b-2 border-blue-500 text-blue-500'
+                : 'text-slate-400 hover:text-slate-300'
+            }`}
+          >
+            <Hash className="h-4 w-4 inline mr-1.5" />
+            Posts
+          </button>
+        </div>
+      )}
 
-      <div className="mt-4">
-        {isHashtag ? (
-          (posts && posts.length) ? (
-            <div className="space-y-3">
+      {/* Results area */}
+      <div className="mt-6">
+        {isLoading ? (
+          <div className="text-center py-12 text-slate-500 animate-pulse">
+            Searching...
+          </div>
+        ) : debouncedQuery.length === 0 ? (
+          <div className="text-center py-16 text-slate-500">
+            Type a name or #hashtag to search
+          </div>
+        ) : showUsersTab ? (
+          people.length > 0 ? (
+            <SearchResults results={people} />
+          ) : (
+            <div className="text-center py-12 text-slate-500">
+              No users found starting with "{debouncedQuery}"
+            </div>
+          )
+        ) : showPostsTab ? (
+          posts.length > 0 ? (
+            <div className="space-y-4">
               {posts.map((p) => (
                 <PostCard key={p.id} post={p} />
               ))}
             </div>
           ) : (
-            <div className="text-sm text-slate-500">No posts found for #{tag}.</div>
+            <div className="text-center py-12 text-slate-500">
+              No posts found with #{cleanTag}
+            </div>
           )
-        ) : (
-          <SearchResults results={people || []} />
-        )}
+        ) : null}
       </div>
     </div>
   )
