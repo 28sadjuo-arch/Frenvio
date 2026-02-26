@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle, UserPlus, Repeat2, Bell, Trash2, BadgeCheck } from 'lucide-react'
-import VerifiedBadge from '../common/VerifiedBadge' // Adjust path if needed
+import VerifiedBadge from '../common/VerifiedBadge' // Make sure path is correct!
 import { formatRelativeTime } from '../../utilis/time'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -9,21 +9,15 @@ import { useAuth } from '../../contexts/AuthContext'
 interface Notification {
   id: string
   type: string
-  boldPart: string        // e.g. "Your verification badge is here!" or "FRENVIO (@frenvio)"
-  normalPart: string      // e.g. "Your account is now verified." or "liked your post"
+  boldPart: string
+  normalPart: string
+  hasVerifiedBadgeInName?: boolean
   read: boolean
   created_at?: string
   post_id?: string | null
   actor_id?: string | null
-  actor?: {
-    id: string
-    username?: string | null
-    display_name?: string | null
-    verified?: boolean | null
-    avatar_url?: string | null
-  } | null
+  actor?: any
   avatar_url?: string | null
-  verified?: boolean | null
   link?: string
 }
 
@@ -48,25 +42,14 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
     await supabase.from('notifications').delete().eq('id', id)
   }
 
-  const markRead = async (id: string) => {
-    if (!user) return
-    await supabase.from('notifications').update({ read: true }).eq('id', id)
-  }
-
   const openNotif = async (n: Notification) => {
-    markRead(n.id) // mark as read on open
-    if (n.link && n.link !== '#') {
-      navigate(n.link)
-    } else if (n.type === 'follow' && n.actor?.username) {
-      navigate(`/${n.actor.username}`)
-    } else if (n.type === 'verified' && user?.id) {
-      navigate(`/u/${user.id}`)
-    } else if (n.post_id) {
-      if (n.type === 'comment') {
-        navigate(`/p/${n.post_id}?focus=comments`)
-      } else {
-        navigate(`/p/${n.post_id}`)
-      }
+    await supabase.from('notifications').update({ read: true }).eq('id', n.id)
+    if (n.link && n.link !== '#') return navigate(n.link)
+    if (n.type === 'follow' && n.actor?.username) return navigate(`/${n.actor.username}`)
+    if (n.type === 'verified' && user?.id) return navigate(`/u/${user.id}`)
+    if (n.post_id) {
+      if (n.type === 'comment') return navigate(`/p/${n.post_id}?focus=comments`)
+      return navigate(`/p/${n.post_id}`)
     }
   }
 
@@ -78,44 +61,42 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
           role="button"
           tabIndex={0}
           onClick={() => openNotif(n)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') openNotif(n)
-          }}
-          className={`group relative flex items-start gap-4 p-4 rounded-2xl border transition cursor-pointer ${
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openNotif(n) }}
+          className={`group flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition cursor-pointer ${
             n.read
-              ? 'border-slate-700 bg-slate-900/40 hover:bg-slate-800/60'
-              : 'border-blue-600/40 bg-blue-950/30 hover:bg-blue-950/50 ring-1 ring-blue-500/30'
+              ? 'border-slate-700 bg-slate-900/50 hover:bg-slate-800/70'
+              : 'border-blue-600/40 bg-blue-950/40 hover:bg-blue-950/60 ring-1 ring-blue-500/30'
           }`}
         >
-          {/* Icon on left */}
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-800/80">
+          {/* Left icon */}
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-800/80">
             {iconFor(n.type)}
           </div>
 
-          {/* Avatar + content */}
+          {/* Content */}
           <div className="flex-1 min-w-0">
-            {/* Avatar row if actor exists */}
+            {/* Avatar + name + badge */}
             {n.actor && (
-              <div className="flex items-center gap-2 mb-1.5">
+              <div className="flex items-center gap-2 mb-1">
                 <img
-                  src={n.actor.avatar_url || `https://api.dicebear.com/9.x/initials/svg?seed=${n.actor.username}`}
-                  alt={n.actor.username || 'User'}
-                  className="h-7 w-7 rounded-full object-cover border border-slate-600"
+                  src={n.avatar_url || `https://api.dicebear.com/9.x/initials/svg?seed=${n.actor.username}`}
+                  alt=""
+                  className="h-6 w-6 rounded-full object-cover border border-slate-600"
                 />
-                <span className="text-sm font-medium">
-                  {n.actor.display_name || `@${n.actor.username}`}
-                  {n.actor.verified && <VerifiedBadge size={14} className="ml-1 inline" />}
+                <span className="font-medium text-sm">
+                  {n.boldPart}
+                  {n.hasVerifiedBadgeInName && <VerifiedBadge size={14} className="ml-1 inline-block" />}
                 </span>
               </div>
             )}
 
-            {/* Main message: bold + normal */}
-            <div className="text-sm leading-relaxed">
-              <span className="font-bold text-white">{n.boldPart}</span>
-              <span className="text-slate-300"> {n.normalPart}</span>
+            {/* Message */}
+            <div className="text-sm text-slate-200 leading-snug">
+              {!n.actor && <span className="font-bold">{n.boldPart}</span>}
+              <span>{n.normalPart}</span>
             </div>
 
-            {/* Timestamp */}
+            {/* Time */}
             {n.created_at && (
               <div className="mt-1 text-xs text-slate-500">
                 {formatRelativeTime(n.created_at)}
@@ -123,15 +104,11 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
             )}
           </div>
 
-          {/* Delete button */}
+          {/* Delete */}
           <button
-            onClick={(e) => {
-              e.stopPropagation()
-              remove(n.id)
-            }}
-            className="absolute top-3 right-3 p-2 rounded-full hover:bg-slate-700 text-slate-400 hover:text-red-400 opacity-70 hover:opacity-100 transition"
-            aria-label="Delete notification"
-            title="Delete"
+            onClick={(e) => { e.stopPropagation(); remove(n.id) }}
+            className="p-2 rounded-full hover:bg-slate-700 text-slate-400 hover:text-red-400 opacity-60 hover:opacity-100 transition"
+            aria-label="Delete"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -139,7 +116,7 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
       ))}
 
       {notifications.length === 0 && (
-        <div className="text-center py-12 text-slate-500 text-sm">
+        <div className="text-center py-10 text-slate-500 text-sm">
           No notifications yet.
         </div>
       )}
