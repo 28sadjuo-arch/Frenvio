@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle, UserPlus, Repeat2, Bell, Trash2, BadgeCheck } from 'lucide-react'
+import VerifiedBadge from '../common/VerifiedBadge' // Make sure path is correct!
 import { formatRelativeTime } from '../../utilis/time'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -8,35 +9,27 @@ import { useAuth } from '../../contexts/AuthContext'
 interface Notification {
   id: string
   type: string
-  message: string
+  boldPart: string
+  normalPart: string
+  hasVerifiedBadgeInName?: boolean
   read: boolean
   created_at?: string
   post_id?: string | null
   actor_id?: string | null
-  actor?: {
-    id: string
-    username?: string | null
-    display_name?: string | null
-    verified?: boolean | null
-    avatar_url?: string | null
-  } | null
+  actor?: any
+  avatar_url?: string | null
+  link?: string
 }
 
 const iconFor = (type: string) => {
-  const common = 'h-4 w-4'
+  const common = 'h-5 w-5'
   switch (type) {
-    case 'like':
-      return <Heart className={common} />
-    case 'comment':
-      return <MessageCircle className={common} />
-    case 'follow':
-      return <UserPlus className={common} />
-    case 'repost':
-      return <Repeat2 className={common} />
-    case 'verified':
-      return <BadgeCheck className={common} />
-    default:
-      return <Bell className={common} />
+    case 'like':    return <Heart className={`${common} text-red-500`} fill="currentColor" />
+    case 'comment': return <MessageCircle className={`${common} text-purple-500`} />
+    case 'follow':  return <UserPlus className={`${common} text-blue-500`} />
+    case 'repost':  return <Repeat2 className={`${common} text-green-500`} />
+    case 'verified':return <BadgeCheck className={`${common} text-yellow-500`} fill="currentColor" />
+    default:        return <Bell className={common} />
   }
 }
 
@@ -49,28 +42,11 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
     await supabase.from('notifications').delete().eq('id', id)
   }
 
-  const markRead = async (id: string) => {
-    if (!user) return
-    await supabase.from('notifications').update({ read: true }).eq('id', id)
-  }
-
   const openNotif = async (n: Notification) => {
-    // Mark read but don't block navigation if it fails.
-    markRead(n.id)
-
-    if (n.type === 'follow') {
-      const uname = n.actor?.username
-      if (uname) return navigate(`/${uname}`)
-      if (n.actor_id) return navigate(`/profile/${n.actor_id}`)
-      return
-    }
-
-    if (n.type === 'verified') {
-      // Owner profile
-      if (user?.id) return navigate(`/u/${user.id}`)
-      return
-    }
-
+    await supabase.from('notifications').update({ read: true }).eq('id', n.id)
+    if (n.link && n.link !== '#') return navigate(n.link)
+    if (n.type === 'follow' && n.actor?.username) return navigate(`/${n.actor.username}`)
+    if (n.type === 'verified' && user?.id) return navigate(`/u/${user.id}`)
     if (n.post_id) {
       if (n.type === 'comment') return navigate(`/p/${n.post_id}?focus=comments`)
       return navigate(`/p/${n.post_id}`)
@@ -85,35 +61,65 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
           role="button"
           tabIndex={0}
           onClick={() => openNotif(n)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') openNotif(n)
-          }}
-          className={`flex items-start gap-3 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/60 transition ${
-            !n.read ? 'ring-1 ring-blue-500/20' : ''
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openNotif(n) }}
+          className={`group flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition cursor-pointer ${
+            n.read
+              ? 'border-slate-700 bg-slate-900/50 hover:bg-slate-800/70'
+              : 'border-blue-600/40 bg-blue-950/40 hover:bg-blue-950/60 ring-1 ring-blue-500/30'
           }`}
         >
-          <div className="mt-0.5 text-slate-600 dark:text-slate-300">{iconFor(n.type)}</div>
-
-          <div className="flex-1">
-            <div className="text-sm">{n.message}</div>
-            {n.created_at && <div className="text-xs text-slate-500 mt-1">{formatRelativeTime(n.created_at)}</div>}
+          {/* Left icon */}
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-800/80">
+            {iconFor(n.type)}
           </div>
 
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            {/* Avatar + name + badge */}
+            {n.actor && (
+              <div className="flex items-center gap-2 mb-1">
+                <img
+                  src={n.avatar_url || `https://api.dicebear.com/9.x/initials/svg?seed=${n.actor.username}`}
+                  alt=""
+                  className="h-6 w-6 rounded-full object-cover border border-slate-600"
+                />
+                <span className="font-medium text-sm">
+                  {n.boldPart}
+                  {n.hasVerifiedBadgeInName && <VerifiedBadge size={14} className="ml-1 inline-block" />}
+                </span>
+              </div>
+            )}
+
+            {/* Message */}
+            <div className="text-sm text-slate-200 leading-snug">
+              {!n.actor && <span className="font-bold">{n.boldPart}</span>}
+              <span>{n.normalPart}</span>
+            </div>
+
+            {/* Time */}
+            {n.created_at && (
+              <div className="mt-1 text-xs text-slate-500">
+                {formatRelativeTime(n.created_at)}
+              </div>
+            )}
+          </div>
+
+          {/* Delete */}
           <button
-            onClick={(e) => {
-              e.stopPropagation()
-              remove(n.id)
-            }}
-            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-500"
-            aria-label="Delete notification"
-            title="Delete"
+            onClick={(e) => { e.stopPropagation(); remove(n.id) }}
+            className="p-2 rounded-full hover:bg-slate-700 text-slate-400 hover:text-red-400 opacity-60 hover:opacity-100 transition"
+            aria-label="Delete"
           >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
       ))}
 
-      {notifications.length === 0 && <div className="text-sm text-slate-500">No notifications yet.</div>}
+      {notifications.length === 0 && (
+        <div className="text-center py-10 text-slate-500 text-sm">
+          No notifications yet.
+        </div>
+      )}
     </div>
   )
 }
