@@ -6,7 +6,7 @@ import { Post, supabase } from '../lib/supabase'
 import SearchResults from '../components/search/SearchResults'
 import PostCard from '../components/social/PostCard'
 
-// Debounce for smooth typing
+// Debounce
 function useDebounce(value: string, delay = 400) {
   const [debounced, setDebounced] = useState(value)
   useEffect(() => {
@@ -37,7 +37,7 @@ const Search: React.FC = () => {
     }
   }, [isHashTagIntent])
 
-  // Users: prefix search (starts with)
+  // Users prefix search
   const { data: people = [], isFetching: peopleLoading } = useQuery({
     queryKey: ['search-people', debouncedQuery],
     queryFn: async () => {
@@ -55,21 +55,28 @@ const Search: React.FC = () => {
     enabled: debouncedQuery.length > 0 && !isHashTagIntent,
   })
 
-  // Posts: search for the word (with or without #)
+  // Posts: simplified hashtag/keyword search + debug
   const { data: posts = [], isFetching: postsLoading } = useQuery({
     queryKey: ['search-posts', searchTerm],
     queryFn: async () => {
       if (!searchTerm) return []
 
-      // Try both with # and without, case-insensitive
-      const { data, error } = await supabase
+      console.log('Searching posts for term:', searchTerm) // Debug
+
+      const { data, error, count } = await supabase
         .from('posts')
-        .select('id, user_id, content, image_url, likes, reposts, created_at')
-        .or(`content.ilike.%${searchTerm}%,content.ilike.%#${searchTerm}%`)
+        .select('id, user_id, content, image_url, likes, reposts, created_at', { count: 'exact' })
+        .ilike('content', `%${searchTerm}%`)
         .order('created_at', { ascending: false })
         .limit(50)
 
-      if (error) console.error('Post search error:', error)
+      console.log('Posts query result:', { count, error, firstFew: data?.slice(0, 2) }) // Debug
+
+      if (error) {
+        console.error('Post search error:', error)
+        return []
+      }
+
       return (data || []) as Post[]
     },
     enabled: debouncedQuery.length > 0 && (activeTab === 'posts' || isHashTagIntent),
@@ -138,6 +145,8 @@ const Search: React.FC = () => {
         ) : (
           <div className="text-center py-12 text-slate-500">
             No posts found for "{debouncedQuery}"
+            <br />
+            <small className="text-xs text-slate-600">(debug: check console for query results)</small>
           </div>
         )}
       </div>
