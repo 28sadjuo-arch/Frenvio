@@ -6,15 +6,13 @@ import { Post, supabase } from '../lib/supabase'
 import SearchResults from '../components/search/SearchResults'
 import PostCard from '../components/social/PostCard'
 
-// Simple debounce hook (prevents querying on every keystroke)
-function useDebounce(value: string, delay = 350) {
+// Debounce for smooth typing
+function useDebounce(value: string, delay = 400) {
   const [debounced, setDebounced] = useState(value)
-
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(value), delay)
     return () => clearTimeout(timer)
   }, [value, delay])
-
   return debounced
 }
 
@@ -24,79 +22,65 @@ const Search: React.FC = () => {
   const [query, setQuery] = useState(urlQ)
   const [activeTab, setActiveTab] = useState<'users' | 'posts'>('users')
 
-  const debouncedQuery = useDebounce(query.trim(), 400)
+  const debouncedQuery = useDebounce(query.trim())
 
   useEffect(() => {
-    // Sync from URL (e.g. clicking #hashtag link)
     setQuery(urlQ)
   }, [urlQ])
 
-  const isHashtagSearch = useMemo(() => debouncedQuery.startsWith('#'), [debouncedQuery])
-  const cleanTag = useMemo(() => debouncedQuery.replace(/^#+/, '').trim(), [debouncedQuery])
+  const isHashTagIntent = debouncedQuery.startsWith('#')
+  const searchTerm = debouncedQuery.replace(/^#+/, '').trim()
 
-  // Auto-switch tab when typing #
   useEffect(() => {
-    if (isHashtagSearch && activeTab !== 'posts') {
+    if (isHashTagIntent && activeTab !== 'posts') {
       setActiveTab('posts')
     }
-  }, [isHashtagSearch, activeTab])
+  }, [isHashTagIntent])
 
-  // Users: prefix search (starts with ...)
+  // Users: prefix search (starts with)
   const { data: people = [], isFetching: peopleLoading } = useQuery({
     queryKey: ['search-people', debouncedQuery],
     queryFn: async () => {
-      if (!debouncedQuery || isHashtagSearch) return []
+      if (!debouncedQuery || isHashTagIntent) return []
 
-      // Prefix search: username or display_name STARTS WITH query
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, display_name, verified, avatar_url')
-        .or(`username.ilike.${debouncedQuery}%,display_name.ilike.${debouncedQuery}%`)
+        .or(`username.ilike.${searchTerm}%,display_name.ilike.${searchTerm}%`)
         .limit(20)
 
-      if (error) {
-        console.error('People search error:', error)
-        return []
-      }
+      if (error) console.error('User search error:', error)
       return data || []
     },
-    enabled: debouncedQuery.length > 0 && !isHashtagSearch,
+    enabled: debouncedQuery.length > 0 && !isHashTagIntent,
   })
 
-  // Posts: hashtag search
+  // Posts: search for the word (with or without #)
   const { data: posts = [], isFetching: postsLoading } = useQuery({
-    queryKey: ['search-posts', cleanTag],
+    queryKey: ['search-posts', searchTerm],
     queryFn: async () => {
-      if (!cleanTag) return []
+      if (!searchTerm) return []
 
-      const needle = `#${cleanTag}`
+      // Try both with # and without, case-insensitive
       const { data, error } = await supabase
         .from('posts')
         .select('id, user_id, content, image_url, likes, reposts, created_at')
-        .ilike('content', `%${needle}%`)
+        .or(`content.ilike.%${searchTerm}%,content.ilike.%#${searchTerm}%`)
         .order('created_at', { ascending: false })
         .limit(50)
 
-      if (error) {
-        console.error('Posts search error:', error)
-        return []
-      }
+      if (error) console.error('Post search error:', error)
       return (data || []) as Post[]
     },
-    enabled: isHashtagSearch && cleanTag.length > 0,
+    enabled: debouncedQuery.length > 0 && (activeTab === 'posts' || isHashTagIntent),
   })
 
   const isLoading = peopleLoading || postsLoading
-  const showUsersTab = activeTab === 'users' && !isHashtagSearch
-  const showPostsTab = activeTab === 'posts' || isHashtagSearch
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 pt-4 pb-10">
-      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-4">
-        Search
-      </h1>
+      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-4">Search</h1>
 
-      {/* Search input */}
       <div className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 shadow-sm">
         <SearchIcon className="h-5 w-5 text-slate-500 dark:text-slate-400" />
         <input
@@ -109,15 +93,12 @@ const Search: React.FC = () => {
         />
       </div>
 
-      {/* Tabs */}
       {debouncedQuery.length > 0 && (
         <div className="mt-5 flex border-b border-slate-700">
           <button
             onClick={() => setActiveTab('users')}
             className={`flex-1 py-3 px-4 text-center font-medium transition ${
-              showUsersTab
-                ? 'border-b-2 border-blue-500 text-blue-500'
-                : 'text-slate-400 hover:text-slate-300'
+              activeTab === 'users' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-slate-400 hover:text-slate-300'
             }`}
           >
             <Users className="h-4 w-4 inline mr-1.5" />
@@ -126,9 +107,7 @@ const Search: React.FC = () => {
           <button
             onClick={() => setActiveTab('posts')}
             className={`flex-1 py-3 px-4 text-center font-medium transition ${
-              showPostsTab
-                ? 'border-b-2 border-blue-500 text-blue-500'
-                : 'text-slate-400 hover:text-slate-300'
+              activeTab === 'posts' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-slate-400 hover:text-slate-300'
             }`}
           >
             <Hash className="h-4 w-4 inline mr-1.5" />
@@ -137,17 +116,12 @@ const Search: React.FC = () => {
         </div>
       )}
 
-      {/* Results area */}
       <div className="mt-6">
         {isLoading ? (
-          <div className="text-center py-12 text-slate-500 animate-pulse">
-            Searching...
-          </div>
+          <div className="text-center py-12 text-slate-500 animate-pulse">Searching...</div>
         ) : debouncedQuery.length === 0 ? (
-          <div className="text-center py-16 text-slate-500">
-            Type a name or #hashtag to search
-          </div>
-        ) : showUsersTab ? (
+          <div className="text-center py-16 text-slate-500">Type a name or #hashtag to search</div>
+        ) : activeTab === 'users' ? (
           people.length > 0 ? (
             <SearchResults results={people} />
           ) : (
@@ -155,19 +129,17 @@ const Search: React.FC = () => {
               No users found starting with "{debouncedQuery}"
             </div>
           )
-        ) : showPostsTab ? (
-          posts.length > 0 ? (
-            <div className="space-y-4">
-              {posts.map((p) => (
-                <PostCard key={p.id} post={p} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-slate-500">
-              No posts found with #{cleanTag}
-            </div>
-          )
-        ) : null}
+        ) : posts.length > 0 ? (
+          <div className="space-y-4">
+            {posts.map((p) => (
+              <PostCard key={p.id} post={p} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-slate-500">
+            No posts found for "{debouncedQuery}"
+          </div>
+        )}
       </div>
     </div>
   )
