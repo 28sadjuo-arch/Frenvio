@@ -6,7 +6,6 @@ type Props = {
   targetUserId: string
   size?: 'sm' | 'md'
   compact?: boolean
-  /** When true, the button renders nothing once the viewer is already following the target. */
   hideWhenFollowing?: boolean
 }
 
@@ -55,7 +54,7 @@ export default function FollowButton({
 
       const { data, error } = await supabase
         .from('follows')
-        .select('id')
+        .select('*')  // Fixed: select all columns (avoids needing specific column name)
         .eq('follower_id', user.id)
         .eq('following_id', targetUserId)
         .maybeSingle()
@@ -69,7 +68,7 @@ export default function FollowButton({
       }
 
       setFollowing(!!data)
-      setOptimisticFollowing(null) // Clear optimistic after real check
+      setOptimisticFollowing(null)
     }
 
     const onFollowUpdated = (e: Event) => {
@@ -102,9 +101,8 @@ export default function FollowButton({
         .insert({ follower_id: user.id, following_id: targetUserId })
 
       if (error) {
-        if (error.code === '23505') { // Duplicate key = already following
-          // Treat as success
-          console.log('Already following (duplicate prevented)')
+        if (error.code === '23505') {
+          console.log('Already following')
         } else {
           throw error
         }
@@ -152,11 +150,7 @@ export default function FollowButton({
   if (isFollowing && hideWhenFollowing) return null
 
   if (following === null && optimisticFollowing === null) {
-    return (
-      <button className={btnClass} disabled>
-        …
-      </button>
-    )
+    return <button className={btnClass} disabled>…</button>
   }
 
   return (
@@ -177,16 +171,17 @@ export default function FollowButton({
             {busy ? 'Updating...' : 'Following'}
           </button>
 
-          {menuOpen ? (
+          {menuOpen && (
             <div className="absolute right-0 mt-2 w-40 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-lg z-50">
               <button
                 onClick={doUnfollow}
                 className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-900 text-red-600"
+                disabled={busy}
               >
                 Unfollow
               </button>
             </div>
-          ) : null}
+          )}
         </>
       )}
     </div>
