@@ -23,7 +23,6 @@ export default function FollowButton({
   const [menuOpen, setMenuOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
 
-  // Use optimistic value if set, else real value
   const isFollowing = optimisticFollowing ?? following
 
   const btnClass = useMemo(() => {
@@ -51,6 +50,7 @@ export default function FollowButton({
     const loadFollowing = async () => {
       if (!user || !targetUserId || user.id === targetUserId) {
         active && setFollowing(false)
+        setOptimisticFollowing(null)
         return
       }
 
@@ -64,15 +64,14 @@ export default function FollowButton({
       if (!active) return
 
       if (error) {
-        console.warn('Follow check failed (possibly RLS)', error)
-        // Don't override optimistic state
+        console.warn('Follow check error (possibly RLS):', error)
         setFollowing((prev) => prev ?? false)
         return
       }
 
       const realFollowing = !!data
       setFollowing(realFollowing)
-      setOptimisticFollowing(null) // Clear optimistic after sync
+      setOptimisticFollowing(null) // Sync after load
     }
 
     const onFollowUpdated = (e: Event) => {
@@ -98,22 +97,23 @@ export default function FollowButton({
   const doFollow = async () => {
     if (!user || !targetUserId || user.id === targetUserId || busy) return
 
-    // Optimistic update
     setOptimisticFollowing(true)
     setBusy(true)
 
     try {
       const { error } = await supabase
         .from('follows')
-        .upsert({ follower_id: user.id, following_id: targetUserId }, { onConflict: 'follower_id,following_id' })
+        .insert({ follower_id: user.id, following_id: targetUserId })
 
       if (error) throw error
 
       emitUpdate()
-    } catch (e) {
-      console.error('Follow failed:', e)
-      setOptimisticFollowing(null) // Revert
-      // Optionally show toast: "Failed to follow"
+      // Re-check right away to confirm
+      await new Promise(r => setTimeout(r, 300)) // small delay for DB commit
+      await loadFollowing()
+    } catch (e: any) {
+      console.error('Follow action failed:', e)
+      setOptimisticFollowing(null)
     } finally {
       setBusy(false)
     }
@@ -122,7 +122,6 @@ export default function FollowButton({
   const doUnfollow = async () => {
     if (!user || !targetUserId || user.id === targetUserId || busy) return
 
-    // Optimistic
     setOptimisticFollowing(false)
     setBusy(true)
     setMenuOpen(false)
@@ -137,9 +136,11 @@ export default function FollowButton({
       if (error) throw error
 
       emitUpdate()
-    } catch (e) {
+      await new Promise(r => setTimeout(r, 300))
+      await loadFollowing()
+    } catch (e: any) {
       console.error('Unfollow failed:', e)
-      setOptimisticFollowing(null) // Revert
+      setOptimisticFollowing(null)
     } finally {
       setBusy(false)
     }
@@ -149,11 +150,7 @@ export default function FollowButton({
   if (isFollowing && hideWhenFollowing) return null
 
   if (following === null && optimisticFollowing === null) {
-    return (
-      <button className={btnClass} disabled>
-        …
-      </button>
-    )
+    return <button className={btnClass} disabled>…</button>
   }
 
   return (
@@ -166,7 +163,7 @@ export default function FollowButton({
         <>
           <button
             className={btnClass}
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={() => setMenuOpen(v => !v)}
             disabled={busy}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
