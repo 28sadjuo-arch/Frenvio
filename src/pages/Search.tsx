@@ -6,7 +6,7 @@ import { Post, supabase } from '../lib/supabase'
 import SearchResults from '../components/search/SearchResults'
 import PostCard from '../components/social/PostCard'
 
-// Debounce
+// Debounce hook
 function useDebounce(value: string, delay = 400) {
   const [debounced, setDebounced] = useState(value)
   useEffect(() => {
@@ -37,7 +37,7 @@ const Search: React.FC = () => {
     }
   }, [isHashTagIntent])
 
-  // Users prefix search
+  // Users: prefix search (starts with)
   const { data: people = [], isFetching: peopleLoading } = useQuery({
     queryKey: ['search-people', debouncedQuery],
     queryFn: async () => {
@@ -55,22 +55,22 @@ const Search: React.FC = () => {
     enabled: debouncedQuery.length > 0 && !isHashTagIntent,
   })
 
-  // Posts: simplified hashtag/keyword search + debug
+  // Posts: search for the word (with or without #)
   const { data: posts = [], isFetching: postsLoading } = useQuery({
     queryKey: ['search-posts', searchTerm],
     queryFn: async () => {
       if (!searchTerm) return []
 
-      console.log('Searching posts for term:', searchTerm) // Debug
+      console.log('Searching posts for:', searchTerm) // Debug
 
       const { data, error, count } = await supabase
         .from('posts')
-        .select('id, user_id, content, image_url, likes, reposts, created_at', { count: 'exact' })
-        .ilike('content', `%${searchTerm}%`)
+        .select('id, user_id, content, image_url, created_at', { count: 'exact' }) // Removed likes, reposts
+        .or(`content.ilike.%${searchTerm}%,content.ilike.%#${searchTerm}%`)
         .order('created_at', { ascending: false })
         .limit(50)
 
-      console.log('Posts query result:', { count, error, firstFew: data?.slice(0, 2) }) // Debug
+      console.log('Posts result:', { count, error, sample: data?.slice(0, 2) }) // Debug
 
       if (error) {
         console.error('Post search error:', error)
@@ -146,7 +146,7 @@ const Search: React.FC = () => {
           <div className="text-center py-12 text-slate-500">
             No posts found for "{debouncedQuery}"
             <br />
-            <small className="text-xs text-slate-600">(debug: check console for query results)</small>
+            <small className="text-xs text-slate-600 block mt-2">(debug: check console for query log)</small>
           </div>
         )}
       </div>
