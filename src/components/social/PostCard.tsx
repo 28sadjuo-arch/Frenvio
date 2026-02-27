@@ -412,9 +412,90 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       {shareOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
-          onClick={() => setShareOpen(false)}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setShareOpen(false)
+          }}
         >
-          {/* ... share modal content unchanged ... */}
+          <div className="w-full md:max-w-sm bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+            <div className="flex items-center justify-between">
+              <div className="font-semibold text-slate-900 dark:text-slate-100">Share</div>
+              <button
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
+                onClick={() => setShareOpen(false)}
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-3 grid gap-2">
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-left"
+                onClick={async () => {
+                  await handleCopyPostLink()
+                  setShareOpen(false)
+                }}
+              >
+                <Copy className="h-5 w-5" />
+                <div>
+                  <div className="font-semibold">Copy link</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Copy this post URL</div>
+                </div>
+              </button>
+
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-left"
+                onClick={() => {
+                  const url = `${window.location.origin}/p/${post.id}`
+                  setShareOpen(false)
+                  navigate(`/chat?share=${encodeURIComponent(url)}`)
+                }}
+              >
+                <Send className="h-5 w-5" />
+                <div>
+                  <div className="font-semibold">Share to inbox</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Send as a DM message</div>
+                </div>
+              </button>
+
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-left"
+                onClick={() => {
+                  const url = `${window.location.origin}/p/${post.id}`
+                  setShareOpen(false)
+                  navigate(`/chat?shareGroup=${encodeURIComponent(url)}`)
+                }}
+              >
+                <Send className="h-5 w-5" />
+                <div>
+                  <div className="font-semibold">Share to group</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Send to a group chat</div>
+                </div>
+              </button>
+
+              {'navigator' in window && (navigator as any).share ? (
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-left"
+                  onClick={async () => {
+                    try {
+                      const url = `${window.location.origin}/p/${post.id}`
+                      await (navigator as any).share({ url, title: 'Frenvio post' })
+                    } catch {
+                      // ignore
+                    } finally {
+                      setShareOpen(false)
+                    }
+                  }}
+                >
+                  <Send className="h-5 w-5" />
+                  <div>
+                    <div className="font-semibold">More options</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">Use your device share menu</div>
+                  </div>
+                </button>
+              ) : null}
+            </div>
+          </div>
         </div>
       )}
 
@@ -429,73 +510,70 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       )}
 
       {/* Profile preview */}
-      <Modal
-        open={profilePreviewOpen}
-        onClose={() => setProfilePreviewOpen(false)}
-        title={author?.display_name || authorUsername}
-        className="max-w-lg"
-      >
-        <div className="flex items-center gap-3">
-          <img
-            src={author?.avatar_url || avatarFallback(authorUsername)}
-            alt="avatar"
-            className="h-16 w-16 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
-            decoding="async"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="font-extrabold flex items-center gap-2">
-              <span className="truncate">{author?.display_name || authorUsername}</span>
-              {author?.verified && <VerifiedBadge size={16} />}
-            </div>
-            <div className="text-sm text-slate-500 dark:text-slate-400 truncate">@{authorUsername}</div>
-          </div>
-        </div>
-        <div className="mt-4 flex items-center gap-2">
+      <Modal open={profilePreviewOpen} onClose={() => setProfilePreviewOpen(false)} className="max-w-lg">
+        <div className="relative">
           <button
-            className="px-4 py-2 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-semibold"
-            onClick={() => {
-              setProfilePreviewOpen(false)
-              navigate(profileHref)
-            }}
-          >
-            View profile
-          </button>
-          <button
-            className="px-4 py-2 rounded-full border border-slate-300 dark:border-slate-700 text-sm font-semibold"
+            className="absolute right-0 top-0 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
             onClick={() => setProfilePreviewOpen(false)}
+            aria-label="Close"
           >
-            Close
+            <X className="h-5 w-5" />
           </button>
+
+          <div className="flex items-center gap-4">
+            <img
+              src={author?.avatar_url || avatarFallback(authorUsername)}
+              alt="avatar"
+              className="h-24 w-24 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
+              decoding="async"
+              loading="lazy"
+            />
+            <div className="min-w-0 flex-1 pr-10">
+              <div className="text-lg font-extrabold flex items-center gap-2">
+                <span className="truncate">{author?.display_name || authorUsername}</span>
+                {author?.verified && <VerifiedBadge size={18} />}
+              </div>
+              <div className="text-sm text-slate-500 dark:text-slate-400 truncate">@{authorUsername}</div>
+              {author?.bio ? (
+                <div className="mt-2 text-sm text-slate-700 dark:text-slate-200 line-clamp-3">{author.bio}</div>
+              ) : null}
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  className="text-sm font-semibold underline"
+                  onClick={() => {
+                    setProfilePreviewOpen(false)
+                    navigate(profileHref)
+                  }}
+                >
+                  Open profile
+                </button>
+                {/* Keep existing follow button behavior */}
+                {user && user.id !== post.user_id ? <FollowButton profileId={post.user_id} /> : null}
+              </div>
+            </div>
+          </div>
         </div>
       </Modal>
 
-      {/* Image preview */}
-      <Modal open={imageOpen} onClose={() => setImageOpen(false)} title="Post" className="max-w-3xl">
+{/* Image preview */}
+      <Modal open={imageOpen} onClose={() => setImageOpen(false)} className="max-w-4xl">
         {post.image_url ? (
-          <div className="space-y-3">
+          <div className="relative">
+            <button
+              className="absolute right-2 top-2 p-2 rounded-full bg-white/80 hover:bg-white border border-slate-200 text-slate-900 dark:bg-slate-950/80 dark:hover:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
+              onClick={() => setImageOpen(false)}
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
             <img
               src={post.image_url}
               alt="post media"
-              className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 object-contain max-h-[70vh]"
+              className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 object-contain max-h-[80vh]"
               decoding="async"
+              loading="lazy"
             />
-            <div className="flex items-center justify-between gap-2">
-              <button
-                className="px-4 py-2 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-semibold"
-                onClick={() => {
-                  setImageOpen(false)
-                  navigate(`/p/${post.id}`)
-                }}
-              >
-                Open post
-              </button>
-              <button
-                className="px-4 py-2 rounded-full border border-slate-300 dark:border-slate-700 text-sm font-semibold"
-                onClick={() => setImageOpen(false)}
-              >
-                Close
-              </button>
-            </div>
           </div>
         ) : null}
       </Modal>

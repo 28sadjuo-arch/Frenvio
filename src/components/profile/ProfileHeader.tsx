@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase, Profile } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
-import { Globe, Instagram, Send, Settings, Share2, MessageCircle, Twitter } from 'lucide-react'
+import { Globe, Instagram, Send, Settings, Share2, MessageCircle, Twitter, X } from 'lucide-react'
 import VerifiedBadge from '../common/VerifiedBadge'
 import RichText from '../common/RichText'
 import { useAuth } from '../../contexts/AuthContext'
@@ -258,42 +258,32 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
         </div>
       </div>
 
-      {/* Avatar preview */}
-      <Modal
-        open={avatarOpen}
-        onClose={() => setAvatarOpen(false)}
-        title={profile.display_name || profile.username || 'Profile'}
-        className="max-w-2xl"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <img
-              src={profile.avatar_url || avatarFallback(profile.username || profile.display_name || 'user')}
-              alt="avatar"
-              className="h-24 w-24 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
-              decoding="async"
-            />
-            <div className="min-w-0">
-              <div className="text-lg font-extrabold flex items-center gap-2">
-                <span className="truncate">{profile.display_name || profile.username || 'Unknown'}</span>
-                {!!profile.verified && <VerifiedBadge size={18} />}
-              </div>
-              <div className="text-slate-500 dark:text-slate-400 truncate">@{profile.username || 'unknown'}</div>
-            </div>
-          </div>
+   {/* Avatar preview */}
+      <Modal open={avatarOpen} onClose={() => setAvatarOpen(false)} className="max-w-3xl">
+        <div className="relative flex flex-col items-center">
+          <button
+            className="absolute right-0 top-0 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
+            onClick={() => setAvatarOpen(false)}
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
 
-          <div className="flex items-center gap-2">
-            <button
-              className="px-4 py-2 rounded-full border border-slate-300 dark:border-slate-700 text-sm font-semibold"
-              onClick={() => setAvatarOpen(false)}
-            >
-              Close
-            </button>
+          <img
+            src={profile.avatar_url || avatarFallback(profile.username || profile.display_name || 'user')}
+            alt="avatar"
+            className="max-h-[75vh] w-auto max-w-full rounded-2xl border border-slate-200 dark:border-slate-800 object-contain"
+            decoding="async"
+            loading="lazy"
+          />
+
+          <div className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            {profile.display_name || profile.username || 'Profile'}
           </div>
         </div>
       </Modal>
 
-      {/* Followers/Following Modal */}
+   {/* Followers/Following Modal */}
       {listOpen ? (
         <div
           className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
