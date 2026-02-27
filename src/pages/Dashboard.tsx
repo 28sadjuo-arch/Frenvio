@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { supabase, Post } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import PostComposer from '../components/social/PostComposer'
@@ -10,6 +10,7 @@ type FeedTab = 'for_you' | 'following'
 const Dashboard: React.FC = () => {
   const { user } = useAuth()
   const [tab, setTab] = useState<FeedTab>('for_you')
+  const PAGE_SIZE = 20
 
   const { data: followingIds } = useQuery({
     queryKey: ['followingIds', user?.id],
@@ -28,21 +29,39 @@ const Dashboard: React.FC = () => {
     return key
   }, [tab, followingIds])
 
-  const { data: posts, isLoading } = useQuery({
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: feedQuery,
-    queryFn: async () => {
-      let q = supabase.from('posts').select('*').order('created_at', { ascending: false })
+    queryFn: async ({ pageParam }) => {
+      let q = supabase.from('posts').select('*').order('created_at', { ascending: false }).limit(PAGE_SIZE)
 
       if (tab === 'following') {
         if (!followingIds || followingIds.length === 0) return []
         q = q.in('user_id', followingIds)
       }
 
+      if (pageParam) {
+        q = q.lt('created_at', pageParam as string)
+      }
+
       const { data, error } = await q
       if (error) return []
       return data as Post[]
     },
+    initialPageParam: null as null | string,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage || lastPage.length < PAGE_SIZE) return undefined
+      const last = lastPage[lastPage.length - 1]
+      return last?.created_at || undefined
+    },
   })
+
+  const posts = (data?.pages || []).flat()
 
   return (
     <div className="mx-auto w-full max-w-none px-4 pt-4">
@@ -75,6 +94,18 @@ const Dashboard: React.FC = () => {
         {(posts || []).map((post) => (
           <PostCard key={post.id} post={post} />
         ))}
+
+        {hasNextPage && (
+          <div className="pt-2 flex justify-center">
+            <button
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="px-5 py-2.5 rounded-full border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold disabled:opacity-60"
+            >
+              {isFetchingNextPage ? 'Loading…' : 'Load more'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

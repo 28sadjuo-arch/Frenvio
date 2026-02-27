@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react'
+import React, { useMemo, useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Heart,
@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import FollowButton from './FollowButton'
 import VerifiedBadge from '../common/VerifiedBadge'
 import { formatRelativeTime } from '../../utilis/time'
+import Modal from '../common/Modal'
 
 interface PostCardProps {
   post: Post
@@ -36,9 +37,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const { data: author } = useQuery({
     queryKey: ['profile-lite', post.user_id],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('*').eq('id', post.user_id).maybeSingle()
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, verified')
+        .eq('id', post.user_id)
+        .maybeSingle()
       return data as Profile | null
     },
+    staleTime: 5 * 60_000,
   })
 
   const authorUsername = author?.username || 'user'
@@ -48,80 +54,81 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [shareOpen, setShareOpen] = useState(false)
   const [commentOpen, setCommentOpen] = useState(false)
   const [commentText, setText] = useState('')
-  const [liked, setLiked] = useState<boolean>(false)
-  const [optimisticLiked, setOptimisticLiked] = useState<boolean | null>(null) // New: for instant UI
-  const [reposted, setReposted] = useState<boolean>(false)
-  const [likes, setLikes] = useState<number>(0)
-  const [reposts, setReposts] = useState<number>(0)
-  const [commentsCount, setCommentsCount] = useState<number>(0)
+
+  // Media preview modals
+  const [imageOpen, setImageOpen] = useState(false)
+  const [profilePreviewOpen, setProfilePreviewOpen] = useState(false)
+
+  // Optimistic UI only (real state comes from cached queries)
+  const [optimisticLiked, setOptimisticLiked] = useState<boolean | null>(null)
+  const [optimisticReposted, setOptimisticReposted] = useState<boolean | null>(null)
+  const [optimisticLikesDelta, setOptimisticLikesDelta] = useState(0)
+  const [optimisticRepostsDelta, setOptimisticRepostsDelta] = useState(0)
+  const [optimisticCommentsDelta, setOptimisticCommentsDelta] = useState(0)
 
   const likeOperationRef = useRef(false)
 
-  const isLiked = optimisticLiked ?? liked
-
-  useEffect(() => {
-    let ignore = false
-
-    async function load() {
-      if (!user) {
-        setLiked(false)
-        setOptimisticLiked(null)
-        await refreshCounts()
-        return
-      }
-
-      // Fixed: select '*' instead of 'id' to avoid column not exist error
-      const { data: l, error: likeErr } = await supabase
-        .from('post_likes')
-        .select('*')
-        .eq('post_id', post.id)
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      const { data: r, error: repostErr } = await supabase
-        .from('post_reposts')
-        .select('id')
-        .eq('post_id', post.id)
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      if (ignore) return
-
-      if (!likeErr) setLiked(!!l)
-      if (!repostErr) setReposted(!!r)
-
-      await refreshCounts()
-    }
-
-    load()
-
-    return () => {
-      ignore = true
-    }
-  }, [user, post.id])
-
-  const canDelete = user?.id === post.user_id
-
-  const refreshCounts = async () => {
-    try {
+  const { data: counts } = useQuery({
+    queryKey: ['postCounts', post.id],
+    queryFn: async () => {
       const [{ count: likeCount }, { count: repostCount }, { count: commentCount }] = await Promise.all([
         supabase.from('post_likes').select('*', { count: 'exact', head: true }).eq('post_id', post.id),
         supabase.from('post_reposts').select('*', { count: 'exact', head: true }).eq('post_id', post.id),
         supabase.from('comments').select('*', { count: 'exact', head: true }).eq('post_id', post.id),
       ])
-      setLikes(likeCount || 0)
-      setReposts(repostCount || 0)
-      setCommentsCount(commentCount || 0)
-    } catch {
-      // ignore
-    }
-  }
+      return {
+        likes: likeCount || 0,
+        reposts: repostCount || 0,
+        comments: commentCount || 0,
+      }
+    },
+    staleTime: 30_000,
+  })
+
+  const { data: interactions } = useQuery({
+    queryKey: ['postInteractions', post.id, user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      if (!user) return { liked: false, reposted: false }
+
+      const [{ data: l }, { data: r }] = await Promise.all([
+        supabase
+          .from('post_likes')
+          .select('*')
+          .eq('post_id', post.id)
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        supabase
+          .from('post_reposts')
+          .select('id')
+          .eq('post_id', post.id)
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      ])
+
+      return { liked: !!l, reposted: !!r }
+    },
+    staleTime: 15_000,
+  })
+
+  const baseLikes = counts?.likes || 0
+  const baseReposts = counts?.reposts || 0
+  const baseComments = counts?.comments || 0
+
+  const likes = Math.max(0, baseLikes + optimisticLikesDelta)
+  const reposts = Math.max(0, baseReposts + optimisticRepostsDelta)
+  const commentsCount = Math.max(0, baseComments + optimisticCommentsDelta)
+
+  const liked = optimisticLiked ?? (interactions?.liked || false)
+  const reposted = optimisticReposted ?? (interactions?.reposted || false)
+
+  const canDelete = user?.id === post.user_id
 
   const likeBtn = useMemo(() => {
     const base = 'flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-full border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm'
-    const color = isLiked ? 'text-red-500' : 'text-slate-600 dark:text-slate-300'
+    const color = liked ? 'text-red-500' : 'text-slate-600 dark:text-slate-300'
     return `${base} ${color}`
-  }, [isLiked])
+  }, [liked])
 
   const actionBtnBase = 'flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-full border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm'
   const actionBtn = `${actionBtnBase} text-slate-600 dark:text-slate-300`
@@ -158,14 +165,12 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     if (likeOperationRef.current) return
 
     likeOperationRef.current = true
-    const prevLiked = isLiked
+    const prevLiked = liked
     const nextLiked = !prevLiked
-    const prevLikes = likes
-    const nextLikes = nextLiked ? prevLikes + 1 : Math.max(0, prevLikes - 1)
 
-    // Optimistic update
+    // Optimistic update (instant + smooth)
     setOptimisticLiked(nextLiked)
-    setLikes(nextLikes)
+    setOptimisticLikesDelta((d) => d + (nextLiked ? 1 : -1))
 
     try {
       if (nextLiked) {
@@ -192,19 +197,15 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         if (error) throw error
       }
 
-      // Small delay for DB consistency
-      await new Promise(r => setTimeout(r, 400))
-      await refreshCounts()
-
-      // Optional: update post row likes count if your posts table has likes column
-      // await supabase.from('posts').update({ likes: nextLikes }).eq('id', post.id)
-
+      // Refresh cached counts/interactions
+      qc.invalidateQueries({ queryKey: ['postCounts', post.id] })
+      qc.invalidateQueries({ queryKey: ['postInteractions', post.id, user.id] })
       qc.invalidateQueries({ queryKey: ['posts'] })
     } catch (e) {
       console.error('Like failed:', e)
       // Revert
-      setOptimisticLiked(prevLiked ? true : null) // null to fall back to real state
-      setLikes(prevLikes)
+      setOptimisticLiked(null)
+      setOptimisticLikesDelta(0)
     } finally {
       likeOperationRef.current = false
     }
@@ -214,9 +215,11 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const handleRepost = async () => {
     if (!user) return
 
-    const nextReposted = !reposted
-    setReposted(nextReposted)
-    setReposts(prev => nextReposted ? prev + 1 : Math.max(0, prev - 1))
+    const prev = reposted
+    const nextReposted = !prev
+
+    setOptimisticReposted(nextReposted)
+    setOptimisticRepostsDelta((d) => d + (nextReposted ? 1 : -1))
 
     try {
       if (nextReposted) {
@@ -226,13 +229,13 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         await supabase.from('post_reposts').delete().eq('post_id', post.id).eq('user_id', user.id)
       }
 
-      await new Promise(r => setTimeout(r, 400))
-      await refreshCounts()
+      qc.invalidateQueries({ queryKey: ['postCounts', post.id] })
+      qc.invalidateQueries({ queryKey: ['postInteractions', post.id, user.id] })
       qc.invalidateQueries({ queryKey: ['posts'] })
     } catch (e) {
       console.error('Repost failed:', e)
-      setReposted(!nextReposted) // Revert
-      setReposts(prev => nextReposted ? Math.max(0, prev - 1) : prev + 1)
+      setOptimisticReposted(null)
+      setOptimisticRepostsDelta(0)
     }
   }
 
@@ -279,21 +282,34 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     const text = commentText.trim()
     if (!text) return
     setText('')
+    setOptimisticCommentsDelta((d) => d + 1)
     await supabase.from('comments').insert({ post_id: post.id, user_id: user.id, content: text })
     await notify('comment')
     await refetchs()
+    qc.invalidateQueries({ queryKey: ['postCounts', post.id] })
     qc.invalidateQueries({ queryKey: ['posts'] })
+    setOptimisticCommentsDelta(0)
   }
 
   return (
     <>
       <div onClick={() => navigate(`/p/${post.id}`)} role="button" className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
         <div className="flex gap-3">
-          <Link to={profileHref} className="shrink-0">
+          <Link
+            to={profileHref}
+            className="shrink-0"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setProfilePreviewOpen(true)
+            }}
+          >
             <img
               src={author?.avatar_url || avatarFallback(authorUsername)}
               className="h-11 w-11 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
               alt="avatar"
+              loading="lazy"
+              decoding="async"
             />
           </Link>
           <div className="min-w-0 flex-1">
@@ -315,7 +331,10 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 {user && user.id !== post.user_id && <FollowButton targetUserId={post.user_id} compact hideWhenFollowing />}
                 <button
                   className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-                  onClick={() => setMenuOpen(v => !v)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setMenuOpen(v => !v)
+                  }}
                   aria-label="More"
                 >
                   <MoreHorizontal className="h-5 w-5" />
@@ -352,6 +371,12 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                   src={post.image_url}
                   alt="post media"
                   className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 object-cover max-h-[520px]"
+                  loading="lazy"
+                  decoding="async"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setImageOpen(true)
+                  }}
                 />
               </div>
             )}
@@ -359,8 +384,8 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             <div className="mt-3 flex items-center justify-start gap-2">
               <button className={likeBtn} onClick={(e) => { e.stopPropagation(); handleLike() }}>
                 <Heart 
-                  className={`h-4 w-4 ${isLiked ? 'text-red-500' : ''}`} 
-                  fill={isLiked ? 'currentColor' : 'none'} 
+                  className={`h-4 w-4 ${liked ? 'text-red-500' : ''}`} 
+                  fill={liked ? 'currentColor' : 'none'} 
                 />
                 <span>{likes}</span>
               </button>
@@ -402,6 +427,78 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           {/* ... comment modal content unchanged ... */}
         </div>
       )}
+
+      {/* Profile preview */}
+      <Modal
+        open={profilePreviewOpen}
+        onClose={() => setProfilePreviewOpen(false)}
+        title={author?.display_name || authorUsername}
+        className="max-w-lg"
+      >
+        <div className="flex items-center gap-3">
+          <img
+            src={author?.avatar_url || avatarFallback(authorUsername)}
+            alt="avatar"
+            className="h-16 w-16 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
+            decoding="async"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="font-extrabold flex items-center gap-2">
+              <span className="truncate">{author?.display_name || authorUsername}</span>
+              {author?.verified && <VerifiedBadge size={16} />}
+            </div>
+            <div className="text-sm text-slate-500 dark:text-slate-400 truncate">@{authorUsername}</div>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center gap-2">
+          <button
+            className="px-4 py-2 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-semibold"
+            onClick={() => {
+              setProfilePreviewOpen(false)
+              navigate(profileHref)
+            }}
+          >
+            View profile
+          </button>
+          <button
+            className="px-4 py-2 rounded-full border border-slate-300 dark:border-slate-700 text-sm font-semibold"
+            onClick={() => setProfilePreviewOpen(false)}
+          >
+            Close
+          </button>
+        </div>
+      </Modal>
+
+      {/* Image preview */}
+      <Modal open={imageOpen} onClose={() => setImageOpen(false)} title="Post" className="max-w-3xl">
+        {post.image_url ? (
+          <div className="space-y-3">
+            <img
+              src={post.image_url}
+              alt="post media"
+              className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 object-contain max-h-[70vh]"
+              decoding="async"
+            />
+            <div className="flex items-center justify-between gap-2">
+              <button
+                className="px-4 py-2 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-semibold"
+                onClick={() => {
+                  setImageOpen(false)
+                  navigate(`/p/${post.id}`)
+                }}
+              >
+                Open post
+              </button>
+              <button
+                className="px-4 py-2 rounded-full border border-slate-300 dark:border-slate-700 text-sm font-semibold"
+                onClick={() => setImageOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </>
   )
 }

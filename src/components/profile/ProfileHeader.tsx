@@ -8,6 +8,7 @@ import RichText from '../common/RichText'
 import { useAuth } from '../../contexts/AuthContext'
 import FollowButton from '../social/FollowButton'
 import EditProfileModal from './EditProfileModal'
+import Modal from '../common/Modal'
 
 const avatarFallback = (seed: string) =>
   `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(seed || '?')}`
@@ -54,6 +55,7 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
   const isMe = user?.id === profile.id
   const [editOpen, setEditOpen] = useState(false)
   const [listOpen, setListOpen] = useState<null | 'followers' | 'following'>(null)
+  const [avatarOpen, setAvatarOpen] = useState(false)
 
   const handles = useMemo(() => {
     const instagram = normalizeHandle(profile.instagram)
@@ -145,6 +147,10 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
             src={profile.avatar_url || avatarFallback(profile.username || profile.display_name || 'user')}
             alt="avatar"
             className="h-20 w-20 rounded-full border-4 border-white dark:border-slate-900 object-cover bg-white z-10 relative"
+            loading="lazy"
+            decoding="async"
+            onClick={() => setAvatarOpen(true)}
+            role="button"
           />
 
           <div className="-mt-10 flex items-end justify-between gap-3 relative z-10">
@@ -251,6 +257,41 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
           </div>
         </div>
       </div>
+
+      {/* Avatar preview */}
+      <Modal
+        open={avatarOpen}
+        onClose={() => setAvatarOpen(false)}
+        title={profile.display_name || profile.username || 'Profile'}
+        className="max-w-2xl"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <img
+              src={profile.avatar_url || avatarFallback(profile.username || profile.display_name || 'user')}
+              alt="avatar"
+              className="h-24 w-24 rounded-full border border-slate-200 dark:border-slate-800 object-cover"
+              decoding="async"
+            />
+            <div className="min-w-0">
+              <div className="text-lg font-extrabold flex items-center gap-2">
+                <span className="truncate">{profile.display_name || profile.username || 'Unknown'}</span>
+                {!!profile.verified && <VerifiedBadge size={18} />}
+              </div>
+              <div className="text-slate-500 dark:text-slate-400 truncate">@{profile.username || 'unknown'}</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              className="px-4 py-2 rounded-full border border-slate-300 dark:border-slate-700 text-sm font-semibold"
+              onClick={() => setAvatarOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Followers/Following Modal */}
       {listOpen ? (

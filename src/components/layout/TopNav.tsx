@@ -23,7 +23,26 @@ const TopNav: React.FC = () => {
           Frenvio
         </Link>
 
-        
+        {!user && (
+          <div className="hidden sm:flex items-center gap-4 text-sm font-semibold">
+            <Link to="/auth" className={`hover:underline ${pathname.startsWith('/auth') ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>
+              Log in
+            </Link>
+            <Link to="/auth" className="px-3 py-1.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+              Sign up
+            </Link>
+            <Link to="/about" className={`hover:underline ${pathname.startsWith('/about') ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>
+              About
+            </Link>
+            <Link to="/terms" className={`hover:underline ${pathname.startsWith('/terms') ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>
+              Terms
+            </Link>
+            <Link to="/privacy" className={`hover:underline ${pathname.startsWith('/privacy') ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>
+              Privacy
+            </Link>
+          </div>
+        )}
+
         {user && (
           <div className="hidden md:flex items-center gap-6 text-sm font-semibold">
             <Link to="/dashboard" className={`flex items-center gap-2 ${pathname.startsWith('/dashboard') ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}>
