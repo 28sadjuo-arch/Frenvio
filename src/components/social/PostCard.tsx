@@ -501,36 +501,37 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 />
               </div>
             )}
-
-            <div className="mt-3 flex items-center justify-start gap-2">
-              <button className={likeBtn} onClick={(e) => { e.stopPropagation(); handleLike() }}>
-                <Heart 
-                  className={`h-4 w-4 ${liked ? 'text-red-500' : ''}`} 
-                  fill={liked ? 'currentColor' : 'none'} 
-                />
-                <span>{likes}</span>
-              </button>
-
-              <button className={repostBtn} onClick={(e) => { e.stopPropagation(); handleRepost() }}>
-                <Repeat2 className="h-4 w-4" />
-                <span>{reposts}</span>
-              </button>
-
-              <button className={actionBtn} onClick={(e) => { e.stopPropagation(); navigate(`/p/${post.id}`) }}>
-                <MessageCircle className="h-4 w-4" />
-                <span>{commentsCount}</span>
-              </button>
-
-              <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleQuote() }}>
-                <Quote className="h-4 w-4" />
-              </button>
-
-              <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleShare() }}>
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
           </div>
         </div>
+
+        <div className="mt-3 flex items-center justify-between gap-1 sm:justify-start sm:gap-2 sm:pl-14">
+          <button className={likeBtn} onClick={(e) => { e.stopPropagation(); handleLike() }}>
+                          <Heart 
+                            className={`h-4 w-4 ${liked ? 'text-red-500' : ''}`} 
+                            fill={liked ? 'currentColor' : 'none'} 
+                          />
+                          <span>{likes}</span>
+                        </button>
+
+                        <button className={repostBtn} onClick={(e) => { e.stopPropagation(); handleRepost() }}>
+                          <Repeat2 className="h-4 w-4" />
+                          <span>{reposts}</span>
+                        </button>
+
+                        <button className={actionBtn} onClick={(e) => { e.stopPropagation(); navigate(`/p/${post.id}`) }}>
+                          <MessageCircle className="h-4 w-4" />
+                          <span>{commentsCount}</span>
+                        </button>
+
+                        <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleQuote() }}>
+                          <Quote className="h-4 w-4" />
+                        </button>
+
+                        <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleShare() }}>
+                          <Send className="h-4 w-4" />
+                        </button>
+        </div>
+
       </div>
 
       {/* Quote modal */}
