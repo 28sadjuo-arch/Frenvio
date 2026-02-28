@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { ShieldCheck, Trash2, User, LogOut } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTheme } from '../contexts/ThemeContext'
 
 const Card = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
@@ -14,6 +15,7 @@ const Card = ({ title, children }: { title: string; children: React.ReactNode })
 const Settings: React.FC = () => {
   const { user, profile, signOut, refreshProfile } = useAuth()
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useTheme()
   const [busy, setBusy] = useState(false)
 
   const [fullName, setFullName] = useState(profile?.display_name || '')
@@ -122,6 +124,18 @@ const Settings: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      </Card>
+
+      <Card title="Appearance">
+        <div className="text-sm text-slate-600 dark:text-slate-300">Switch between Light and Dark mode.</div>
+        <div className="mt-3">
+          <button
+            onClick={toggleTheme}
+            className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
+          >
+            {theme === 'dark' ? 'Dark' : 'Light'}
+          </button>
         </div>
       </Card>
 

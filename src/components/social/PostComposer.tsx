@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { uploadPostImage } from '../../lib/storage'
 import { useQueryClient } from '@tanstack/react-query'
+import { askFrenvioAi, getFrenvioAiUserId, textMentionsFrenvioAi } from '../../lib/frenvioAi'
 
 const PostComposer: React.FC = () => {
   const { user } = useAuth()
@@ -39,12 +40,33 @@ const PostComposer: React.FC = () => {
       const base = { content: content.trim(), user_id: user.id }
       const withImage = image_url ? { ...base, image_url } : base
 
-      let res = await supabase.from('posts').insert(withImage)
+      let res = await supabase.from('posts').insert(withImage).select('id').maybeSingle()
       if (res.error && image_url) {
         console.warn('Insert with image_url failed (missing column?). Falling back to text-only.')
-        res = await supabase.from('posts').insert(base)
+        res = await supabase.from('posts').insert(base).select('id').maybeSingle()
       }
       if (res.error) throw res.error
+
+      // Mention-based AI reply (best-effort): if post includes @frenvioai, add a comment from Frenvio AI.
+      try {
+        const insertedPostId = (res.data as any)?.id
+        const contentText = base.content || ''
+        if (insertedPostId && textMentionsFrenvioAi(contentText)) {
+          const aiId = await getFrenvioAiUserId()
+          if (aiId) {
+            const prompt =
+              `You were mentioned as @frenvioai in a post.\n\n` +
+              `Post: "${contentText.slice(0, 1000)}"\n\n` +
+              `Reply as Frenvio AI in a comment. If the post asks something, answer it. Otherwise respond friendly.`
+            const reply = await askFrenvioAi(prompt)
+            if (reply) {
+              await supabase.from('comments').insert({ post_id: insertedPostId, user_id: aiId, content: reply })
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
 
       setContent('')
       setImageFile(null)

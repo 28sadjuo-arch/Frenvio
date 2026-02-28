@@ -1,6 +1,7 @@
 import React from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
+import { Instagram } from 'lucide-react'
 
 const About: React.FC = () => (
   <div className="space-y-4">
@@ -32,30 +33,38 @@ const About: React.FC = () => (
 
       <div className="mt-5 grid md:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="font-extrabold">Amahoro Sadju</div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="font-extrabold">Amahoro Sadju</div>
+            <a
+              href="https://instagram.com/sadjuo"
+              target="_blank"
+              rel="noreferrer"
+              className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+              aria-label="Instagram"
+              title="Instagram"
+            >
+              <Instagram className="h-5 w-5" />
+            </a>
+          </div>
           <div className="mt-1 text-slate-700 dark:text-slate-200">Founder & CEO</div>
           <div className="text-sm text-slate-500">Frenvio Inc.</div>
-          <a
-            href="https://instagram.com/sadjuo"
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 inline-flex items-center justify-center px-3 py-1.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-semibold"
-          >
-            Instagram
-          </a>
         </div>
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-          <div className="font-extrabold">Ines Olga</div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="font-extrabold">Ines Olga</div>
+            <a
+              href="https://instagram.com/olga_inees"
+              target="_blank"
+              rel="noreferrer"
+              className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+              aria-label="Instagram"
+              title="Instagram"
+            >
+              <Instagram className="h-5 w-5" />
+            </a>
+          </div>
           <div className="mt-1 text-slate-700 dark:text-slate-200">Co-founder</div>
           <div className="text-sm text-slate-500">Frenvio Inc.</div>
-          <a
-            href="https://instagram.com/olga_inees"
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 inline-flex items-center justify-center px-3 py-1.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-semibold"
-          >
-            Instagram
-          </a>
         </div>
       </div>
 

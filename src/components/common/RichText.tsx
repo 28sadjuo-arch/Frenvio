@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import { stripQuoteToken } from '../../utilis/quote'
 
 type Props = {
   text: string
@@ -12,6 +13,7 @@ type Props = {
  * - Hashtags: #tag -> /search?q=%23tag
  */
 export default function RichText({ text, className }: Props) {
+  const clean = stripQuoteToken(text)
   const parts: React.ReactNode[] = []
 
   // Regex matches: URL | @mention | #hashtag
@@ -21,13 +23,13 @@ export default function RichText({ text, className }: Props) {
   let lastIndex = 0
   let match: RegExpExecArray | null
 
-  while ((match = pattern.exec(text)) !== null) {
+  while ((match = pattern.exec(clean)) !== null) {
     const [full, url, www, mention, hashtag] = match
     const start = match.index
     const end = start + full.length
 
     if (start > lastIndex) {
-      parts.push(text.slice(lastIndex, start))
+      parts.push(clean.slice(lastIndex, start))
     }
 
     if (url || www) {
@@ -72,8 +74,8 @@ export default function RichText({ text, className }: Props) {
     lastIndex = end
   }
 
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex))
+  if (lastIndex < clean.length) {
+    parts.push(clean.slice(lastIndex))
   }
 
   return <span className={className}>{parts}</span>

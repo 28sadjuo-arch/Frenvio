@@ -8,6 +8,7 @@ import { formatRelativeTime } from '../../utilis/time'
 import VerifiedBadge from '../common/VerifiedBadge'
 import { badgeVariantForProfile } from '../../utilis/badge'
 import { Link } from 'react-router-dom'
+import { askFrenvioAi, getFrenvioAiUserId, textMentionsFrenvioAi } from '../../lib/frenvioAi'
 
 const avatarFallback = (seed: string) =>
   `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(seed || '?')}`
@@ -92,11 +93,45 @@ export default function CommentsThread({
     const payload: any = { post_id: postId, user_id: user.id, content }
     if (replyTo) payload.parent_id = replyTo.id
 
-    const { error } = await supabase.from('comments').insert(payload)
+    const { data: inserted, error } = await supabase
+      .from('comments')
+      .insert(payload)
+      .select('id')
+      .maybeSingle()
+
     if (error) {
       alert(error.message)
       return
     }
+
+    // If someone mentions @frenvioai, auto-reply as Frenvio AI (as a reply to that comment).
+    // Best-effort only; do not block the UI.
+    try {
+      const insertedId = (inserted as any)?.id
+      if (insertedId && textMentionsFrenvioAi(content)) {
+        const aiId = await getFrenvioAiUserId()
+        if (aiId) {
+          const prompt =
+            `You were mentioned as @frenvioai in a comment.\n\n` +
+            `Comment: "${content.slice(0, 800)}"\n\n` +
+            `Reply as Frenvio AI. If the comment contains a question, answer it. ` +
+            `If it doesn't, respond friendly and helpful. Keep it short.`
+
+          const reply = await askFrenvioAi(prompt)
+          if (reply) {
+            await supabase.from('comments').insert({
+              post_id: postId,
+              user_id: aiId,
+              content: reply,
+              parent_id: insertedId,
+            })
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     setText('')
     setReplyTo(null)
     await refetch()

@@ -315,6 +315,10 @@ return (
                       ? '🎤 Voice message'
                       : (last?.content || '').slice(0, 60) || ''
                 const time = last?.created_at ? formatRelativeTime(last.created_at) : ''
+
+                const lastSeen = o.last_seen_at ? new Date(o.last_seen_at).getTime() : 0
+                const isOnline = lastSeen ? Date.now() - lastSeen < 2 * 60 * 1000 : false
+                const status = isOnline ? 'Online' : 'Offline'
                 return (
                   <button
                     key={it.room_id}
@@ -339,9 +343,12 @@ return (
                         </div>
                         <div className="mt-0.5 flex items-center justify-between gap-2">
                           <div className="text-xs text-slate-600 dark:text-slate-300 truncate">{preview}</div>
-                          {it.unread ? (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">New</span>
-                          ) : null}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-slate-500">{status}</span>
+                            {it.unread ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">New</span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </div>

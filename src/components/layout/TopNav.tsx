@@ -1,6 +1,5 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import ThemeToggle from '../common/ThemeToggle'
 import { Home, Search, MessageCircle, Bell, User } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -8,9 +7,6 @@ const TopNav: React.FC = () => {
   const { pathname, search } = useLocation()
   const { user, profile } = useAuth()
   const to = user ? '/dashboard' : '/'
-
-  // Home should be super minimal (no Sign in button)
-  const hideOnMobile = pathname === '/chat'
 
   return (
     <nav
@@ -62,8 +58,6 @@ const TopNav: React.FC = () => {
             </Link>
           </div>
         )}
-
-        <ThemeToggle />
       </div>
     </nav>
   )

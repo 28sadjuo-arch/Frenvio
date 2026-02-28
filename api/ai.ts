@@ -29,16 +29,19 @@ export default async function handler(req, res) {
   }
 
   // ✅ Keep KB factual + professional (avoid private stuff to all users)
+  // Keep the knowledge base public-friendly. Don't include personal/sensitive details here.
   const FRENVI0_KB = `
 Frenvio is a social platform for sharing posts, chatting (DMs and groups), and discovering people and content through hashtags.
 Name meaning: "Fren" (friends) + "Vio" (inspired by latin verb from form "via" meaning a way/road) — a way to connect and communicate.
 Founder & CEO: Amahoro Sadju. 
 Co-founder: Ines Olga.
-Founder born date and place: 12 September 2003, born and raised in Rwanda.
-Founder Hobbies: tech, online stuff,etc...
-Co-founder is from rwanda too
-founder social media username( give profile landing links): ig:sadjuo, x:sadjuo, frenvio:sadju.
-Co founder social media usernames(give profile links): ig:olga_inees, frenvio:olga.
+
+If (and only if) the user explicitly asks for the founder's age or birth date:
+- Amahoro Sadju was born on 12 September 2003.
+
+Public social usernames:
+- Founder: Instagram @sadjuo, X @sadjuo, Frenvio @sadju
+- Co-founder: Instagram @olga_inees, Frenvio @olga
 
 
 Key features:
@@ -129,7 +132,9 @@ IMPORTANT BEHAVIOR:
 - Do NOT copy-paste the knowledge base text. **Paraphrase in your own words**.
 - Don’t say “I’m programmed” or “as an AI model”. Just respond naturally.
 - If user asks “why do you like the founder?”, answer warmly and playfully without mentioning programming.
--ONLY mention founder born date and age when you asked about his age.
+- Never overshare personal details.
+- If asked for someone's name, answer ONLY the name (don't add extra private info).
+- Only mention the founder birth date/age when the user explicitly asks for age/birth date.
 -Make sure they understand the answer well.
 -Represent frenvio team separatery if they ask founder say founder name only anly mention all team when asked all about or who is behind frenvio.
 

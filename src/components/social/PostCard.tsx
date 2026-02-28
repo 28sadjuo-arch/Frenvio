@@ -6,6 +6,8 @@ import {
   Repeat2,
   Copy,
   Send,
+  Quote,
+  Pin,
   MoreHorizontal,
   Trash2,
   Flag,
@@ -20,6 +22,8 @@ import VerifiedBadge from '../common/VerifiedBadge'
 import { badgeVariantForProfile } from '../../utilis/badge'
 import { formatRelativeTime } from '../../utilis/time'
 import Modal from '../common/Modal'
+import { extractQuotePostId, stripQuoteToken } from '../../utilis/quote'
+import { getPinnedPostIds, togglePin } from '../../utilis/pins'
 
 interface PostCardProps {
   post: Post
@@ -34,6 +38,12 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const { user } = useAuth()
   const qc = useQueryClient()
   const navigate = useNavigate()
+
+  const quotePostId = useMemo(() => extractQuotePostId(post.content || ''), [post.content])
+  const displayContent = useMemo(() => stripQuoteToken(post.content || ''), [post.content])
+
+  const [quoteOpen, setQuoteOpen] = useState(false)
+  const [quoteText, setQuoteText] = useState('')
 
   const { data: author } = useQuery({
     queryKey: ['profile-lite', post.user_id],
@@ -50,6 +60,32 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const authorUsername = author?.username || 'user'
   const profileHref = `/${authorUsername}`
+
+  const { data: pinnedIds = [] } = useQuery({
+    queryKey: ['pinnedPosts', user?.id],
+    enabled: !!user,
+    queryFn: async () => (user ? await getPinnedPostIds(user.id) : []),
+    staleTime: 30_000,
+  })
+
+  const isPinned = !!user && user.id === post.user_id && (pinnedIds || []).includes(post.id)
+
+  const { data: quoted } = useQuery({
+    queryKey: ['quotedPost', quotePostId],
+    enabled: !!quotePostId,
+    queryFn: async () => {
+      if (!quotePostId) return null
+      const { data: qp } = await supabase.from('posts').select('*').eq('id', quotePostId).maybeSingle()
+      if (!qp) return null
+      const { data: ap } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, verified')
+        .eq('id', (qp as any).user_id)
+        .maybeSingle()
+      return { post: qp as any, author: ap as any }
+    },
+    staleTime: 5 * 60_000,
+  })
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -244,6 +280,33 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     setShareOpen(true)
   }
 
+  const handleQuote = () => {
+    if (!user) return
+    setQuoteText('')
+    setQuoteOpen(true)
+  }
+
+  const submitQuote = async () => {
+    if (!user) return
+    const txt = quoteText.trim()
+    if (!txt) return
+
+    const payload = {
+      content: `${txt} [[quote:${post.id}]]`,
+      user_id: user.id,
+    }
+
+    const { error } = await supabase.from('posts').insert(payload)
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    setQuoteOpen(false)
+    setQuoteText('')
+    qc.invalidateQueries({ queryKey: ['posts'] })
+  }
+
   const handleCopyPostLink = async () => {
     const url = `${window.location.origin}/p/${post.id}`
     try {
@@ -343,6 +406,22 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 {menuOpen && (
                   <div className="relative">
                     <div className="absolute right-0 mt-2 w-44 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-lg overflow-hidden z-10">
+                      {user && user.id === post.user_id ? (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await togglePin(user.id, post.id)
+                              qc.invalidateQueries({ queryKey: ['pinnedPosts', user.id] })
+                              qc.invalidateQueries({ queryKey: ['profilePosts'] })
+                            } finally {
+                              setMenuOpen(false)
+                            }
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-2"
+                        >
+                          <Pin className="h-4 w-4" /> {isPinned ? 'Unpin from profile' : 'Pin to profile'}
+                        </button>
+                      ) : null}
                       {canDelete ? (
                         <button
                           onClick={handleDelete}
@@ -364,7 +443,48 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               </div>
             </div>
 
-            <RichText className="mt-2" text={post.content} />
+            <RichText className="mt-2" text={displayContent} />
+
+            {quoted?.post ? (
+              <div
+                className="mt-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-3 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigate(`/p/${quoted.post.id}`)
+                }}
+                role="button"
+                aria-label="Quoted post"
+              >
+                <div className="flex items-center gap-2">
+                  <img
+                    src={quoted.author?.avatar_url || avatarFallback(quoted.author?.username)}
+                    className="h-7 w-7 rounded-full object-cover border border-slate-200 dark:border-slate-800"
+                    alt=""
+                  />
+                  <div className="min-w-0 flex items-center gap-1">
+                    <div className="text-sm font-semibold truncate">
+                      {quoted.author?.display_name || quoted.author?.username || 'User'}
+                    </div>
+                    {badgeVariantForProfile(quoted.author) ? (
+                      <VerifiedBadge size={14} variant={badgeVariantForProfile(quoted.author)!} />
+                    ) : null}
+                    <div className="text-xs text-slate-500 truncate">@{quoted.author?.username || 'user'}</div>
+                  </div>
+                </div>
+                <div className="mt-2 text-sm text-slate-900 dark:text-slate-100 break-words">
+                  <RichText text={(quoted.post as any).content || ''} />
+                </div>
+                {(quoted.post as any).image_url ? (
+                  <img
+                    src={(quoted.post as any).image_url}
+                    className="mt-2 w-full max-h-64 object-cover rounded-xl border border-slate-200 dark:border-slate-800"
+                    loading="lazy"
+                    decoding="async"
+                    alt=""
+                  />
+                ) : null}
+              </div>
+            ) : null}
 
             {post.image_url && (
               <div className="mt-3">
@@ -401,6 +521,10 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 <span>{commentsCount}</span>
               </button>
 
+              <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleQuote() }}>
+                <Quote className="h-4 w-4" />
+              </button>
+
               <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleShare() }}>
                 <Send className="h-4 w-4" />
               </button>
@@ -408,6 +532,54 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           </div>
         </div>
       </div>
+
+      {/* Quote modal */}
+      {quoteOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setQuoteOpen(false)
+          }}
+        >
+          <div className="w-full md:max-w-lg bg-white dark:bg-slate-950 rounded-t-2xl md:rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+            <div className="flex items-center justify-between">
+              <div className="font-semibold text-slate-900 dark:text-slate-100">Quote</div>
+              <button
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
+                onClick={() => setQuoteOpen(false)}
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <textarea
+              value={quoteText}
+              onChange={(e) => setQuoteText(e.target.value)}
+              placeholder="Write something…"
+              className="mt-3 w-full min-h-[90px] rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent px-3 py-2 text-sm"
+            />
+
+            <div className="mt-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-3">
+              <div className="text-xs text-slate-500">Quoting</div>
+              <div className="mt-1 text-sm font-semibold truncate">{author?.display_name || author?.username || 'User'}</div>
+              <div className="mt-1 text-sm text-slate-900 dark:text-slate-100 break-words">
+                <RichText text={displayContent || ''} />
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                disabled={!quoteText.trim()}
+                onClick={submitQuote}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-60"
+              >
+                Post
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Share modal */}
       {shareOpen && (

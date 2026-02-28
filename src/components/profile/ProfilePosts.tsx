@@ -2,6 +2,7 @@ import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase, Post } from '../../lib/supabase'
 import PostCard from '../social/PostCard'
+import { getPinnedPostIds } from '../../utilis/pins'
 
 interface ProfilePostsProps {
   userId: string
@@ -9,6 +10,13 @@ interface ProfilePostsProps {
 }
 
 const ProfilePosts: React.FC<ProfilePostsProps> = ({ userId, mode = 'posts' }) => {
+  const { data: pinnedIds = [] } = useQuery({
+    queryKey: ['pinnedPosts', userId],
+    enabled: mode === 'posts',
+    queryFn: async () => await getPinnedPostIds(userId),
+    staleTime: 30_000,
+  })
+
   const { data: posts } = useQuery({
     queryKey: ['profilePosts', userId, mode],
     queryFn: async () => {
@@ -24,7 +32,9 @@ const ProfilePosts: React.FC<ProfilePostsProps> = ({ userId, mode = 'posts' }) =
           if (!ids.length) return []
 
           const { data } = await supabase.from('posts').select('*').in('id', ids)
-          return (data || []) as Post[]
+          const map = new Map((data || []).map((p: any) => [p.id, p]))
+          // Preserve repost order (newest repost first)
+          return ids.map((id: string) => map.get(id)).filter(Boolean) as Post[]
         }
 
         let q = supabase
@@ -43,12 +53,27 @@ const ProfilePosts: React.FC<ProfilePostsProps> = ({ userId, mode = 'posts' }) =
     },
   })
 
+  const displayPosts = React.useMemo(() => {
+    const rows = posts || []
+    if (mode !== 'posts' || !pinnedIds?.length) return rows
+    const pinnedSet = new Set(pinnedIds)
+    const pinned = rows.filter((p) => pinnedSet.has(p.id))
+    const rest = rows.filter((p) => !pinnedSet.has(p.id))
+    pinned.sort((a, b) => pinnedIds.indexOf(a.id) - pinnedIds.indexOf(b.id))
+    return [...pinned, ...rest]
+  }, [posts, pinnedIds, mode])
+
   return (
     <div className="space-y-4">
-      {posts?.map((post) => (
-        <PostCard key={post.id} post={post} />
+      {displayPosts?.map((post) => (
+        <div key={post.id}>
+          {mode === 'posts' && pinnedIds?.includes(post.id) ? (
+            <div className="mb-2 text-xs text-slate-500 font-semibold">📌 Pinned</div>
+          ) : null}
+          <PostCard post={post} />
+        </div>
       ))}
-      {!posts?.length && <div className="text-sm text-slate-500">No posts yet.</div>}
+      {!displayPosts?.length && <div className="text-sm text-slate-500">No posts yet.</div>}
     </div>
   )
 }
