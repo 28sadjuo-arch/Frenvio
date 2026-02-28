@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import VerifiedBadge from '../common/VerifiedBadge'
+import { badgeVariantForProfile } from '../../utilis/badge'
 
 interface SearchResult {
   id: string
@@ -32,7 +33,7 @@ const SearchResults: React.FC<{ results: SearchResult[] }> = ({ results }) => {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <div className="font-bold truncate">{u.display_name || u.username || 'Unknown'}</div>
-                {!!u.verified && <VerifiedBadge size={16} />}
+                {badgeVariantForProfile(u) && <VerifiedBadge size={16} variant={badgeVariantForProfile(u)!} />}
               </div>
               <div className="text-sm text-slate-500 truncate">@{u.username || 'unknown'}</div>
             </div>

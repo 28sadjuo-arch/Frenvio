@@ -5,6 +5,8 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { uploadChatMedia } from '../../lib/storage'
 import { formatRelativeTime } from '../../utilis/time'
+import VerifiedBadge from '../common/VerifiedBadge'
+import { badgeVariantForProfile } from '../../utilis/badge'
 import AudioBubble from './AudioBubble'
 import TypingDots from './TypingDots'
 
@@ -27,11 +29,7 @@ type GMsg = {
   reply_to_id?: string | null
 }
 
-const VerifiedBadge = () => (
-  <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600 text-white text-[10px] leading-none">
-    ✓
-  </span>
-)
+// use shared badge component (supports blue + gold)
 
 /**
  * Clickable links inside message text (keeps design the same).
@@ -557,7 +555,7 @@ export default function GroupChatRoom({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1 font-semibold truncate">
                           <span className="truncate">{title}</span>
-                          {p?.verified ? <VerifiedBadge /> : null}
+                          {badgeVariantForProfile(p) ? <VerifiedBadge size={14} variant={badgeVariantForProfile(p)!} /> : null}
                           <span className="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                             {m.role}
                           </span>
@@ -626,7 +624,7 @@ export default function GroupChatRoom({
                     }}
                   >
                     <span className="font-semibold text-slate-700 dark:text-slate-200">{title}</span>
-                    {p?.verified ? <VerifiedBadge /> : null}
+                    {badgeVariantForProfile(p) ? <VerifiedBadge size={14} variant={badgeVariantForProfile(p)!} /> : null}
                     <span>{uname}</span>
                   </button>
                 ) : null}
@@ -664,7 +662,7 @@ export default function GroupChatRoom({
                   ) : null}
 
                   <div className={`mt-1 text-[10px] ${mine ? 'text-white/80' : 'text-slate-500'}`}>
-                    {formatRelativeTime(m.created_at)} ago
+                    {formatRelativeTime(m.created_at)}
                   </div>
                 </div>
 

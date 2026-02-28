@@ -5,6 +5,9 @@ import { Bot, Send } from 'lucide-react'
 
 type AiMsg = { id: string; role: 'user' | 'assistant'; content: string; created_at: string }
 
+const STORAGE_KEY = 'frenvio_ai_chat_v1'
+const MAX_HISTORY = 16
+
 function localAnswer(prompt: string) {
   const p = prompt.toLowerCase()
   if (p.includes('help') || p.includes('how')) return "Tell me what you're trying to do and I’ll guide you step by step."
@@ -14,13 +17,14 @@ function localAnswer(prompt: string) {
 }
 
 // ✅ This version shows the REAL error instead of silently falling back
-async function callApi(prompt: string): Promise<string> {
+async function callApi(prompt: string, history: Array<Pick<AiMsg, 'role' | 'content'>>): Promise<string> {
   let res: Response | null = null
   try {
     res = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: prompt }),
+      // Send lightweight chat history (client-side only; not stored in DB)
+      body: JSON.stringify({ message: prompt, history }),
     })
   } catch (e: any) {
     return `⚠️ Frenvio AI backend not reachable. (Network error)\n\n${String(e?.message || e)}`
@@ -44,9 +48,17 @@ async function callApi(prompt: string): Promise<string> {
 }
 
 const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
-  const [messages, setMessages] = useState<AiMsg[]>([
-    { id: 'w', role: 'assistant', content: 'Hi 👋 I’m Frenvio AI. Ask me anything.', created_at: new Date().toISOString() },
-  ])
+  const [messages, setMessages] = useState<AiMsg[]>(() => {
+    // Persist only in the browser (localStorage). Nothing is saved in your database.
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      const parsed = raw ? (JSON.parse(raw) as AiMsg[]) : null
+      if (Array.isArray(parsed) && parsed.length) return parsed
+    } catch {
+      // ignore
+    }
+    return [{ id: 'w', role: 'assistant', content: 'Hi 👋 I’m Frenvio AI. Ask me anything.', created_at: new Date().toISOString() }]
+  })
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -58,6 +70,15 @@ const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   }
 
   useEffect(() => scrollToBottom(), [messages.length])
+
+  // Save chat locally so Frenvio AI can stay on topic across refreshes.
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_HISTORY)))
+    } catch {
+      // ignore
+    }
+  }, [messages])
 
   const send = async () => {
     const prompt = text.trim()
@@ -75,7 +96,12 @@ const AIChatRoom: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
     setMessages((p) => [...p, userMsg])
     setLoading(true)
 
-    const answer = await callApi(prompt).catch((e) => `⚠️ AI failed: ${String(e)}`)
+    // Send a compact history window so replies stay on topic.
+    const compactHistory = [...messages, userMsg]
+      .slice(-MAX_HISTORY)
+      .map(({ role, content }) => ({ role, content }))
+
+    const answer = await callApi(prompt, compactHistory).catch((e) => `⚠️ AI failed: ${String(e)}`)
 
     const botMsg: AiMsg = {
       id: crypto.randomUUID(),

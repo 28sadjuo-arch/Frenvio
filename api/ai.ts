@@ -8,6 +8,13 @@ export default async function handler(req, res) {
   const message = String(req.body?.message || '').trim()
   if (!message) return res.status(400).json({ error: 'Invalid message' })
 
+  // Optional lightweight chat history sent from the client.
+  // We do NOT store this in the database — it's only used to keep answers on-topic.
+  const rawHistory = Array.isArray(req.body?.history) ? req.body.history : []
+  const history = rawHistory
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+    .slice(-16)
+
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return res.status(500).json({ error: 'Missing GEMINI_API_KEY' })
 
@@ -156,9 +163,21 @@ ${FRENVI0_KB}
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
 
+  const contents = (history.length
+    ? history.map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: String(m.content).slice(0, 4000) }],
+      }))
+    : [{ role: 'user', parts: [{ text: message }] }])
+
+  // Ensure the current message is always the last user turn.
+  if (!contents.length || contents[contents.length - 1].role !== 'user') {
+    contents.push({ role: 'user', parts: [{ text: message }] })
+  }
+
   const payload = {
     system_instruction: { parts: [{ text: SYSTEM }] },
-    contents: [{ role: 'user', parts: [{ text: message }] }],
+    contents,
 
     // ✅ Google live grounding
     tools: [{ google_search: {} }],

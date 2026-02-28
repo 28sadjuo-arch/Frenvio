@@ -17,6 +17,7 @@ import RichText from '../common/RichText'
 import { useAuth } from '../../contexts/AuthContext'
 import FollowButton from './FollowButton'
 import VerifiedBadge from '../common/VerifiedBadge'
+import { badgeVariantForProfile } from '../../utilis/badge'
 import { formatRelativeTime } from '../../utilis/time'
 import Modal from '../common/Modal'
 
@@ -317,7 +318,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               <div className="min-w-0">
                 <Link to={profileHref} className="font-semibold truncate hover:underline inline-flex items-center gap-2">
                   <span>{author?.display_name || authorUsername}</span>
-                  {author?.verified && <VerifiedBadge size={14} />}
+                  {badgeVariantForProfile(author) && <VerifiedBadge size={14} variant={badgeVariantForProfile(author)!} />}
                 </Link>
                 <div className="mt-0.5 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 flex-wrap">
                   <Link to={profileHref} className="hover:underline">
@@ -531,7 +532,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             <div className="min-w-0 flex-1 pr-10">
               <div className="text-lg font-extrabold flex items-center gap-2">
                 <span className="truncate">{author?.display_name || authorUsername}</span>
-                {author?.verified && <VerifiedBadge size={18} />}
+                {badgeVariantForProfile(author) && <VerifiedBadge size={18} variant={badgeVariantForProfile(author)!} />}
               </div>
               <div className="text-sm text-slate-500 dark:text-slate-400 truncate">@{authorUsername}</div>
               {author?.bio ? (

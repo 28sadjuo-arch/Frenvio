@@ -4,6 +4,7 @@ import { supabase, Profile } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
 import { Globe, Instagram, Send, Settings, Share2, MessageCircle, Twitter, X } from 'lucide-react'
 import VerifiedBadge from '../common/VerifiedBadge'
+import { badgeVariantForProfile } from '../../utilis/badge'
 import RichText from '../common/RichText'
 import { useAuth } from '../../contexts/AuthContext'
 import FollowButton from '../social/FollowButton'
@@ -200,7 +201,7 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
             <h1 className="text-xl font-extrabold">
               {profile.display_name || profile.username || 'Unknown'}
             </h1>
-            {!!profile.verified && <VerifiedBadge size={18} />}
+            {badgeVariantForProfile(profile) && <VerifiedBadge size={18} variant={badgeVariantForProfile(profile)!} />}
           </div>
           <div className="text-slate-500 dark:text-slate-400">@{profile.username || 'unknown'}</div>
 
@@ -320,7 +321,7 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 font-semibold truncate">
                           <span className="truncate">{title}</span>
-                          {p.verified ? <VerifiedBadge size={16} /> : null}
+                          {badgeVariantForProfile(p) ? <VerifiedBadge size={16} variant={badgeVariantForProfile(p)!} /> : null}
                         </div>
                         <div className="text-xs text-slate-500 truncate">{uname}</div>
                       </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Heart, MessageCircle, UserPlus, Repeat2, Bell, Trash2, BadgeCheck } from 'lucide-react'
 import VerifiedBadge from '../common/VerifiedBadge' // Make sure path is correct!
 import { formatRelativeTime } from '../../utilis/time'
+import { badgeVariantForProfile } from '../../utilis/badge'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -64,8 +65,8 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openNotif(n) }}
           className={`group flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition cursor-pointer ${
             n.read
-              ? 'border-slate-700 bg-slate-900/50 hover:bg-slate-800/70'
-              : 'border-blue-600/40 bg-blue-950/40 hover:bg-blue-950/60 ring-1 ring-blue-500/30'
+              ? 'border-slate-800 bg-slate-900/50 hover:bg-slate-800/70'
+              : 'border-blue-600/40 bg-slate-900/70 hover:bg-slate-900/80 ring-1 ring-blue-500/20'
           }`}
         >
           {/* Left icon */}
@@ -85,7 +86,9 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
                 />
                 <span className="font-medium text-sm">
                   {n.boldPart}
-                  {n.hasVerifiedBadgeInName && <VerifiedBadge size={14} className="ml-1 inline-block" />}
+                  {badgeVariantForProfile(n.actor) && (
+                    <VerifiedBadge size={14} variant={badgeVariantForProfile(n.actor)!} className="ml-1 inline-block" />
+                  )}
                 </span>
               </div>
             )}

@@ -5,6 +5,8 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { uploadChatMedia } from '../../lib/storage'
 import { formatRelativeTime } from '../../utilis/time'
+import VerifiedBadge from '../common/VerifiedBadge'
+import { badgeVariantForProfile } from '../../utilis/badge'
 import TypingDots from './TypingDots'
 import AudioBubble from './AudioBubble'
 
@@ -34,14 +36,7 @@ function roomIdFor(a: string, b: string) {
   return [a, b].sort().join(':')
 }
 
-const VerifiedBadge = () => (
-  <span
-    className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600 text-white text-[10px] leading-none"
-    aria-label="Verified"
-  >
-    ✓
-  </span>
-)
+// use shared badge component (supports blue + gold)
 
 const QUICK_REACTIONS = ['❤️', '😂', '👍', '🔥', '😮']
 
@@ -99,7 +94,8 @@ export default function DMChatRoom({
   const username = other?.username ? `@${other.username}` : ''
   const otherLastSeenMs = other?.last_seen_at ? new Date(other.last_seen_at).getTime() : 0
   const isOnline = otherLastSeenMs ? Date.now() - otherLastSeenMs < 45_000 : false
-  const lastSeenLabel = other?.last_seen_at ? `${formatRelativeTime(other.last_seen_at)} ago` : null
+  // Keep timestamps clean: show relative short form ("2h", "3d") or a date — without "ago".
+  const lastSeenLabel = other?.last_seen_at ? `${formatRelativeTime(other.last_seen_at)}` : null
 
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
@@ -481,7 +477,7 @@ const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecord
             <div className="min-w-0 text-left">
               <div className="flex items-center gap-1 font-extrabold leading-tight truncate">
                 <span className="truncate">{name}</span>
-                {other?.verified ? <VerifiedBadge /> : null}
+                {badgeVariantForProfile(other) ? <VerifiedBadge size={14} variant={badgeVariantForProfile(other)!} /> : null}
               </div>
               <div className="text-xs text-slate-500 truncate">
                 {username}
@@ -564,7 +560,7 @@ const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecord
 
 
                   <div className={`mt-1 text-[10px] ${mine ? 'text-white/80' : 'text-slate-500'}`}>
-                    {formatRelativeTime(m.created_at)} ago
+                    {formatRelativeTime(m.created_at)}
                     {mine ? <span className="ml-2">{m.read_at ? 'Seen' : 'Sent'}</span> : null}
                   </div>
                 </div>

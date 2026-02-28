@@ -21,6 +21,7 @@ const Notifications: React.FC = () => {
 
       if (!error) {
         qc.invalidateQueries({ queryKey: ['notifications', user.id] })
+        qc.invalidateQueries({ queryKey: ['badges', user.id] })
       }
     }
 
@@ -116,6 +117,7 @@ const Notifications: React.FC = () => {
 
     if (!error) {
       qc.invalidateQueries({ queryKey: ['notifications', user.id] })
+      qc.invalidateQueries({ queryKey: ['badges', user.id] })
     }
   }
 

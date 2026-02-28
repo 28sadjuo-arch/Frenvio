@@ -8,6 +8,8 @@ import AIChatRoom from '../components/chat/AIChatRoom'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { formatRelativeTime } from '../utilis/time'
+import VerifiedBadge from '../components/common/VerifiedBadge'
+import { badgeVariantForProfile } from '../utilis/badge'
 
 type Tab = 'inbox' | 'groups' | 'ai'
 
@@ -20,14 +22,7 @@ function roomIdFor(a: string, b: string) {
   return [a, b].sort().join(':')
 }
 
-const VerifiedBadge = () => (
-  <span
-    className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600 text-white text-[10px] leading-none"
-    aria-label="Verified"
-  >
-    ✓
-  </span>
-)
+
 
 const Chat: React.FC = () => {
   const { user } = useAuth()
@@ -312,7 +307,6 @@ return (
               {inboxItems.map((it: any) => {
                 const o = it.other || {}
                 const name = o.display_name || o.username || 'User'
-                const uname = o.username ? '@' + o.username : ''
                 const last = it.last
                 const preview =
                   last?.message_type === 'image'
@@ -339,8 +333,7 @@ return (
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0 flex items-center gap-1">
                             <div className="font-bold truncate">{name}</div>
-                            {o.verified ? <VerifiedBadge /> : null}
-                            <div className="text-xs text-slate-500 truncate ml-1">{uname}</div>
+                            {badgeVariantForProfile(o) ? <VerifiedBadge size={14} variant={badgeVariantForProfile(o)!} /> : null}
                           </div>
                           <div className="text-xs text-slate-500">{time}</div>
                         </div>

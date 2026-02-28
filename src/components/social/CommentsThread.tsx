@@ -6,6 +6,7 @@ import RichText from '../common/RichText'
 import { Trash2 } from 'lucide-react'
 import { formatRelativeTime } from '../../utilis/time'
 import VerifiedBadge from '../common/VerifiedBadge'
+import { badgeVariantForProfile } from '../../utilis/badge'
 import { Link } from 'react-router-dom'
 
 const avatarFallback = (seed: string) =>
@@ -133,7 +134,7 @@ export default function CommentsThread({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <span className="truncate">{name}</span>
-                  {p?.verified ? <VerifiedBadge size="sm" /> : null}
+                  {badgeVariantForProfile(p) ? <VerifiedBadge size="sm" variant={badgeVariantForProfile(p)!} /> : null}
                 </Link>
                 <div className="text-xs text-slate-500 truncate">@{uname} • {formatRelativeTime(c.created_at)}</div>
               </div>

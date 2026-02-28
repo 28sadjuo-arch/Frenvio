@@ -35,11 +35,27 @@ const About: React.FC = () => (
           <div className="font-extrabold">Amahoro Sadju</div>
           <div className="mt-1 text-slate-700 dark:text-slate-200">Founder & CEO</div>
           <div className="text-sm text-slate-500">Frenvio Inc.</div>
+          <a
+            href="https://instagram.com/sadjuo"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center justify-center px-3 py-1.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-semibold"
+          >
+            Instagram
+          </a>
         </div>
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
           <div className="font-extrabold">Ines Olga</div>
           <div className="mt-1 text-slate-700 dark:text-slate-200">Co-founder</div>
           <div className="text-sm text-slate-500">Frenvio Inc.</div>
+          <a
+            href="https://instagram.com/olga_inees"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center justify-center px-3 py-1.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-semibold"
+          >
+            Instagram
+          </a>
         </div>
       </div>
 
