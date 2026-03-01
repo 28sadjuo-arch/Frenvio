@@ -41,7 +41,6 @@ export default function CommentsThread({
   const { data: comments = [], refetch, isFetching } = useQuery({
     queryKey: ['comments', postId, 'thread'],
     queryFn: async () => {
-      // Fetch comments without relying on foreign-key relationship joins (more robust)
       const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
         .select('id, post_id, content, created_at, user_id, parent_id')
@@ -54,6 +53,7 @@ export default function CommentsThread({
 
       const userIds = Array.from(new Set(rows.map((c) => c.user_id).filter(Boolean)))
       let authorsMap: Record<string, any> = {}
+
       if (userIds.length) {
         const { data: authors } = await supabase
           .from('profiles')
@@ -70,6 +70,7 @@ export default function CommentsThread({
   const { parents, repliesByParent } = useMemo(() => {
     const parents: CommentRow[] = []
     const repliesByParent: Record<string, CommentRow[]> = {}
+
     for (const c of comments) {
       if (!c.parent_id) parents.push(c)
       else {
@@ -77,6 +78,7 @@ export default function CommentsThread({
         repliesByParent[c.parent_id].push(c)
       }
     }
+
     return { parents, repliesByParent }
   }, [comments])
 
@@ -104,8 +106,7 @@ export default function CommentsThread({
       return
     }
 
-    // If someone mentions @frenvioai, auto-reply as Frenvio AI (as a reply to that comment).
-    // Best-effort only; do not block the UI.
+    // AI auto-reply if @frenvioai mentioned
     try {
       const insertedId = (inserted as any)?.id
       if (insertedId && textMentionsFrenvioAi(content)) {
@@ -116,7 +117,6 @@ export default function CommentsThread({
             `Comment: "${content.slice(0, 800)}"\n\n` +
             `Reply as Frenvio AI. If the comment contains a question, answer it. ` +
             `If it doesn't, respond friendly and helpful. Keep it short.`
-
           const reply = await askFrenvioAi(prompt)
           if (reply) {
             await supabase.from('comments').insert({
@@ -147,19 +147,19 @@ export default function CommentsThread({
     await refetch()
   }
 
-  const renderRow = (c: CommentRow, isReply = false) => {
+  // Recursive render for threaded replies
+  const renderComment = (c: CommentRow, depth = 0) => {
     const p = c.profiles
     const name = p?.display_name || p?.username || 'User'
     const uname = p?.username || 'user'
     const avatar = p?.avatar_url || avatarFallback(uname)
 
     return (
-      <div key={c.id} className={isReply ? 'pl-10' : ''}>
+      <div key={c.id} className={`pl-${depth * 8} border-l border-slate-200 dark:border-slate-800 ml-4`}>
         <div className="flex items-start gap-3 py-3">
           <Link to={`/${uname}`} onClick={(e) => e.stopPropagation()}>
-            <img src={avatar} className="w-9 h-9 rounded-full object-cover" />
+            <img src={avatar} className="w-8 h-8 rounded-full object-cover" />
           </Link>
-
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -169,12 +169,13 @@ export default function CommentsThread({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <span className="truncate">{name}</span>
-                  {badgeVariantForProfile(p) ? <VerifiedBadge size="sm" variant={badgeVariantForProfile(p)!} /> : null}
+                  {badgeVariantForProfile(p) && <VerifiedBadge size="sm" variant={badgeVariantForProfile(p)!} />}
                 </Link>
-                <div className="text-xs text-slate-500 truncate">@{uname} • {formatRelativeTime(c.created_at)}</div>
+                <div className="text-xs text-slate-500 truncate">
+                  @{uname} • {formatRelativeTime(c.created_at)}
+                </div>
               </div>
-
-              {canDelete(c) ? (
+              {canDelete(c) && (
                 <button
                   className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900"
                   onClick={(e) => {
@@ -185,34 +186,33 @@ export default function CommentsThread({
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-              ) : null}
+              )}
             </div>
 
             <div className="mt-1 text-sm text-slate-900 dark:text-slate-100 break-words">
               <RichText text={c.content} />
             </div>
 
-            {!isReply ? (
-              <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
-                <button
-                  className="hover:text-slate-900 dark:hover:text-slate-100"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setReplyTo(c)
-                  }}
-                >
-                  Reply
-                </button>
-              </div>
-            ) : null}
+            <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
+              <button
+                className="hover:text-slate-900 dark:hover:text-slate-100"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setReplyTo(c)
+                }}
+              >
+                Reply
+              </button>
+            </div>
           </div>
         </div>
 
-        {(repliesByParent[c.id] || []).length ? (
-          <div className="border-l border-slate-200 dark:border-slate-800 ml-4 pl-2">
-            {(repliesByParent[c.id] || []).map((r) => renderRow(r, true))}
+        {/* Recursively render replies */}
+        {(repliesByParent[c.id] || []).length > 0 && (
+          <div className="mt-1">
+            {(repliesByParent[c.id] || []).map((r) => renderComment(r, depth + 1))}
           </div>
-        ) : null}
+        )}
       </div>
     )
   }
@@ -259,7 +259,7 @@ export default function CommentsThread({
         ) : parents.length === 0 ? (
           <div className="py-4 text-sm text-slate-500">No comments yet.</div>
         ) : (
-          parents.map((c) => renderRow(c, false))
+          parents.map((c) => renderComment(c, 0))
         )}
       </div>
     </div>
