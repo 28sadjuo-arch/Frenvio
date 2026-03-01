@@ -8,6 +8,15 @@ export default async function handler(req, res) {
   const message = String(req.body?.message || '').trim()
   if (!message) return res.status(400).json({ error: 'Invalid message' })
 
+  // Heuristic language hints (helps the model avoid "translation mode" when the user is just chatting).
+  const wantsTranslation = /(meaning|translate|translation|define|bisobanura|ubusobanuro|what does)/i.test(message)
+  const looksKinyarwanda = /(bimeze|bite|amakuru|muraho|mwiriwe|mwaramutse|meze|ndaho|yego|oya|ndabizi|ndabona|murakoze)/i.test(
+    message
+  )
+  const kinyarwandaHint = !wantsTranslation && looksKinyarwanda
+    ? `\n\nLANGUAGE NOTE: The user is speaking Kinyarwanda. Reply naturally in Kinyarwanda. Do NOT translate/define their words unless they explicitly ask for a translation/meaning.`
+    : ''
+
   // Optional lightweight chat history sent from the client.
   // We do NOT store this in the database — it's only used to keep answers on-topic.
   const rawHistory = Array.isArray(req.body?.history) ? req.body.history : []
@@ -125,6 +134,7 @@ STYLE:
 - Match the user’s vibe (e.g. “hey bro” → casual response).
 - Reply in the **same language** the user is using (e.g. Kinyarwanda → answer in Kinyarwanda).
 - Do **not** translate/define words unless the user explicitly asks for a translation/meaning.
+- Never start your answer with “\"<phrase>\" in Kinyarwanda means …” unless the user asked for meaning/translation.
 - If the user sends a very short message (1–2 words) and the intent is unclear, ask a short clarifying question in the same language.
 - Light humor is welcome (modern/gen-Z style), but don’t be rude.
 - Use emojis sometimes (max 1–2 per message).
@@ -166,6 +176,7 @@ HIGH-STAKES TOPICS (finance, politics, legal, medical):
 
 FRENVI0 KNOWLEDGE BASE:
 ${FRENVI0_KB}
+${kinyarwandaHint}
 `
 
   const url =

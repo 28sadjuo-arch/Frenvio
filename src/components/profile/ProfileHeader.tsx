@@ -94,11 +94,26 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
       }
 
       // Last-resort fallback (may be limited by RLS for other profiles)
-      const [{ count: following }, { count: followers }] = await Promise.all([
-        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.id),
-        supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
+      // NOTE: Some environments return null counts when using head:true, so we avoid it.
+      const [followingRes, followersRes] = await Promise.all([
+        supabase.from('follows').select('following_id', { count: 'exact' }).eq('follower_id', profile.id),
+        supabase.from('follows').select('follower_id', { count: 'exact' }).eq('following_id', profile.id),
       ])
-      return { following: following || 0, followers: followers || 0 }
+
+      const following =
+        typeof followingRes.count === 'number'
+          ? followingRes.count
+          : Array.isArray(followingRes.data)
+            ? followingRes.data.length
+            : 0
+      const followers =
+        typeof followersRes.count === 'number'
+          ? followersRes.count
+          : Array.isArray(followersRes.data)
+            ? followersRes.data.length
+            : 0
+
+      return { following, followers }
     },
   })
 
