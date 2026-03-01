@@ -66,9 +66,34 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
     return { instagram, twitter, telegram, website }
   }, [profile.instagram, profile.twitter, profile.telegram, profile.website])
 
+  // NOTE:
+  // Some Supabase RLS policies allow reading follow rows only when the
+  // authenticated user is involved in the relationship. That would make counts for
+  // *other* profiles look like "1 follower" (only you) even if they have more.
+  // We therefore prefer the denormalized counters stored on the profile record.
+  // Fallback to counting follows only when counters are missing.
   const { data: followCounts } = useQuery({
-    queryKey: ['followCounts', profile.id],
+    queryKey: ['followCounts', profile.id, profile.followers_count, profile.following_count],
     queryFn: async () => {
+      const pFollowers = typeof profile.followers_count === 'number' ? profile.followers_count : null
+      const pFollowing = typeof profile.following_count === 'number' ? profile.following_count : null
+      if (pFollowers !== null && pFollowing !== null) {
+        return { following: pFollowing, followers: pFollowers }
+      }
+
+      const { data: p } = await supabase
+        .from('profiles')
+        .select('followers_count, following_count')
+        .eq('id', profile.id)
+        .maybeSingle()
+
+      const dbFollowers = typeof p?.followers_count === 'number' ? p.followers_count : null
+      const dbFollowing = typeof p?.following_count === 'number' ? p.following_count : null
+      if (dbFollowers !== null && dbFollowing !== null) {
+        return { following: dbFollowing, followers: dbFollowers }
+      }
+
+      // Last-resort fallback (may be limited by RLS for other profiles)
       const [{ count: following }, { count: followers }] = await Promise.all([
         supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.id),
         supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
