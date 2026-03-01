@@ -178,7 +178,7 @@ HIGH-STAKES TOPICS (finance, politics, legal, medical):
 
 FRENVI0 KNOWLEDGE BASE:
 ${FRENVI0_KB}
-${alllanguageHint}
+${kinyarwandaHint}
 `
 
   const url =
