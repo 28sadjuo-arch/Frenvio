@@ -225,17 +225,14 @@ export default function CommentsThread({
                 onClick={(e) => {
                   e.stopPropagation()
                   setReplyTo(c)
-
-                  // Auto-prefill @username when replying
-                  const replyUname = c.profiles?.username || 'user'
+                  const uname = c.profiles?.username || 'user'
                   setText((prev) => {
-                    const mention = `@${replyUname}`
+                    const mention = `@${uname}`
                     const p = (prev || '').trim()
                     if (!p) return `${mention} `
                     if (p.toLowerCase().startsWith(mention.toLowerCase())) return prev
                     return `${mention} ${prev}`
                   })
-
                   // Focus the input for faster replying
                   setTimeout(() => inputRef.current?.focus(), 0)
                 }}
@@ -266,7 +263,10 @@ export default function CommentsThread({
             <span>
               Replying to <span className="font-semibold">@{replyTo.profiles?.username || 'user'}</span>
             </span>
-            <button className="hover:text-slate-900 dark:hover:text-slate-100" onClick={() => setReplyTo(null)}>
+            <button
+              className="hover:text-slate-900 dark:hover:text-slate-100"
+              onClick={() => setReplyTo(null)}
+            >
               Cancel
             </button>
           </div>

@@ -1,18 +1,21 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "Frenvio",
+  "short_name": "Frenvio",
+  "description": "Share posts, explore hashtags, follow creators, and chat with friends on Frenvio.",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
-      "src": "/my-favicon/web-app-manifest-192x192.png",
+      "src": "/web-app-manifest-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     },
     {
-      "src": "/my-favicon/web-app-manifest-512x512.png",
+      "src": "/web-app-manifest-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
   "theme_color": "#000422",
