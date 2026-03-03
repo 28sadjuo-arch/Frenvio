@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -37,6 +37,7 @@ export default function CommentsThread({
   const { user } = useAuth()
   const [text, setText] = useState('')
   const [replyTo, setReplyTo] = useState<CommentRow | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
   const { data: comments = [], refetch, isFetching } = useQuery({
     queryKey: ['comments', postId, 'thread'],
@@ -106,6 +107,34 @@ export default function CommentsThread({
       return
     }
 
+<<<<<<< HEAD
+=======
+    // Notifications (best-effort)
+    try {
+      // Notify post owner about a new comment (excluding self-notify)
+      if (postOwnerId && postOwnerId !== user.id) {
+        await supabase.from('notifications').insert({
+          user_id: postOwnerId,
+          actor_id: user.id,
+          type: 'comment',
+          post_id: postId,
+        })
+      }
+
+      // If this is a reply, also notify the comment author (excluding self + avoiding duplicates)
+      if (replyTo?.user_id && replyTo.user_id !== user.id && replyTo.user_id !== postOwnerId) {
+        await supabase.from('notifications').insert({
+          user_id: replyTo.user_id,
+          actor_id: user.id,
+          type: 'comment',
+          post_id: postId,
+        })
+      }
+    } catch {
+      // ignore
+    }
+
+>>>>>>> a09cc60 (Fix: AI quote replies, comment @ auto reply, notifications, markdown support, home refresh)
     // AI auto-reply if @frenvioai mentioned
     try {
       const insertedId = (inserted as any)?.id
@@ -199,6 +228,19 @@ export default function CommentsThread({
                 onClick={(e) => {
                   e.stopPropagation()
                   setReplyTo(c)
+<<<<<<< HEAD
+=======
+                  const uname = c.profiles?.username || 'user'
+                  setText((prev) => {
+                    const mention = `@${uname}`
+                    const p = (prev || '').trim()
+                    if (!p) return `${mention} `
+                    if (p.toLowerCase().startsWith(mention.toLowerCase())) return prev
+                    return `${mention} ${prev}`
+                  })
+                  // Focus the input for faster replying
+                  setTimeout(() => inputRef.current?.focus(), 0)
+>>>>>>> a09cc60 (Fix: AI quote replies, comment @ auto reply, notifications, markdown support, home refresh)
                 }}
               >
                 Reply
@@ -238,6 +280,7 @@ export default function CommentsThread({
 
         <div className="flex gap-2">
           <input
+            ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={replyTo ? 'Write a reply…' : 'Write a comment…'}
