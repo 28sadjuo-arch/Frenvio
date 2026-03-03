@@ -107,6 +107,11 @@ export default function CommentsThread({
       return
     }
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> 535f3e15ee6babd4914ad86e3296502b3852a0ee
     // Notifications (best-effort)
     try {
       // Notify post owner about a new comment (excluding self-notify)
@@ -132,6 +137,10 @@ export default function CommentsThread({
       // ignore
     }
 
+<<<<<<< HEAD
+=======
+>>>>>>> a09cc60 (Fix: AI quote replies, comment @ auto reply, notifications, markdown support, home refresh)
+>>>>>>> 535f3e15ee6babd4914ad86e3296502b3852a0ee
     // AI auto-reply if @frenvioai mentioned
     try {
       const insertedId = (inserted as any)?.id
@@ -225,6 +234,11 @@ export default function CommentsThread({
                 onClick={(e) => {
                   e.stopPropagation()
                   setReplyTo(c)
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> 535f3e15ee6babd4914ad86e3296502b3852a0ee
                   const uname = c.profiles?.username || 'user'
                   setText((prev) => {
                     const mention = `@${uname}`
@@ -235,6 +249,10 @@ export default function CommentsThread({
                   })
                   // Focus the input for faster replying
                   setTimeout(() => inputRef.current?.focus(), 0)
+<<<<<<< HEAD
+=======
+>>>>>>> a09cc60 (Fix: AI quote replies, comment @ auto reply, notifications, markdown support, home refresh)
+>>>>>>> 535f3e15ee6babd4914ad86e3296502b3852a0ee
                 }}
               >
                 Reply
