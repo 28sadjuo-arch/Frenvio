@@ -124,12 +124,10 @@ const Notifications: React.FC = () => {
   const hasUnread = notifications.some((n: any) => !n.read)
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8 py-6 min-h-screen">
+    <div className="mx-auto w-full max-w-3xl px-0 sm:px-6 lg:px-8 py-4 sm:py-6 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-          Notifications
-        </h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 px-4 sm:px-0">
+        <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">Notifications</h1>
 
         {hasUnread && (
           <button

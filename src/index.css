@@ -5,10 +5,12 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background-color: #f8fafc;
+  /* Match TopNav background so iOS safe-area doesn't look like a gap */
+  background-color: #ffffff;
 }
 
 .dark {
-  background-color: #0f172a;
+  /* Match slate-950 */
+  background-color: #020617;
   color: #f1f5f9;
 }

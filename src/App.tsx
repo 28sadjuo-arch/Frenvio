@@ -46,7 +46,7 @@ function AppShell() {
   const { user } = useAuth()
 
   return (
-    <div className={`${theme} min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors`}>
+    <div className={`${theme} min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors`}>
       <TopNav />
       <main className="w-full pt-0 pb-[calc(104px+env(safe-area-inset-bottom))]">
         <Routes>

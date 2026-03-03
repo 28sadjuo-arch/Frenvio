@@ -38,7 +38,7 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
+    <div className="bg-white dark:bg-slate-950 border-y border-slate-200 dark:border-slate-800 overflow-hidden">
       <ProfileHeader profile={profile} onUpdated={() => refetch()} variant="embedded" />
 
       <div className="border-t border-slate-200 dark:border-slate-800">

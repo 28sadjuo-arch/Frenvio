@@ -283,7 +283,7 @@ useEffect(() => {
 
   
 return (
-    <div className="mx-auto w-full max-w-6xl px-3 md:px-4 py-3 md:py-4 flex gap-4">
+    <div className="mx-auto w-full max-w-6xl px-0 md:px-4 py-2 md:py-4 flex gap-4">
       {/* Left panel */}
       <div
         className={`w-full md:w-[380px] md:shrink-0 space-y-3 ${
@@ -298,8 +298,8 @@ return (
 
         {/* Inbox list */}
         {tab === 'inbox' && (
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-            <div className="p-3 border-b border-slate-200 dark:border-slate-800 text-sm font-bold">Inbox</div>
+          <div className="border-y border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 text-sm font-bold">Inbox</div>
             <div className="divide-y divide-slate-200 dark:divide-slate-800">
               {inboxItems.length === 0 && (
                 <div className="p-4 text-sm text-slate-600 dark:text-slate-300"></div>
@@ -323,7 +323,7 @@ return (
                   <button
                     key={it.room_id}
                     onClick={() => setSelected({ kind: 'dm', otherUserId: it.other?.id })}
-                    className={`w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                    className={`w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-900 ${
                       selected?.kind === 'dm' && selected.otherUserId === it.other?.id ? 'bg-slate-50 dark:bg-slate-800' : ''
                     }`}
                   >
@@ -362,8 +362,8 @@ return (
         {/* Groups */}
         {tab === 'groups' && (
           <div className="space-y-3">
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-              <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="border-y border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <div className="text-sm font-bold">Groups</div>
                 <button
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-600 text-white text-sm font-semibold"
@@ -373,7 +373,7 @@ return (
                 </button>
               </div>
 
-              <div className="p-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2">
                   <Search className="h-4 w-4 text-slate-500" />
                   <input
@@ -403,7 +403,7 @@ return (
                 )}
               </div>
 
-              <div className="p-3 border-b border-slate-200 dark:border-slate-800 text-sm font-bold">Your groups</div>
+              <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 text-sm font-bold">Your groups</div>
               <div className="divide-y divide-slate-200 dark:divide-slate-800">
                 {myGroups.length === 0 && (
                   <div className="p-4 text-sm text-slate-600 dark:text-slate-300">You’re not in any groups yet.</div>

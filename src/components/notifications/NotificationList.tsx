@@ -55,7 +55,7 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
   }
 
   return (
-    <div className="space-y-3">
+    <div className="border-y border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
       {notifications.map((n) => (
         <div
           key={n.id}
@@ -63,15 +63,16 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
           tabIndex={0}
           onClick={() => openNotif(n)}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openNotif(n) }}
-          className={`group flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition cursor-pointer ${
-            n.read
-              ? 'border-slate-800 bg-slate-900/50 hover:bg-slate-800/70'
-              : 'border-blue-600/40 bg-slate-900/70 hover:bg-slate-900/80 ring-1 ring-blue-500/20'
+          className={`group flex items-start gap-3 px-4 py-3 transition cursor-pointer border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 ${
+            n.read ? 'opacity-90' : ''
           }`}
         >
           {/* Left icon */}
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-800/80">
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-900">
             {iconFor(n.type)}
+            {!n.read ? (
+              <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-white dark:ring-slate-950" />
+            ) : null}
           </div>
 
           {/* Content */}
@@ -94,7 +95,7 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
             )}
 
             {/* Message */}
-            <div className="text-sm text-slate-200 leading-snug">
+            <div className="text-sm text-slate-800 dark:text-slate-200 leading-snug">
               {!n.actor && <span className="font-bold">{n.boldPart}</span>}
               <span>{n.normalPart}</span>
             </div>
@@ -110,7 +111,7 @@ const NotificationList: React.FC<{ notifications: Notification[] }> = ({ notific
           {/* Delete */}
           <button
             onClick={(e) => { e.stopPropagation(); remove(n.id) }}
-            className="p-2 rounded-full hover:bg-slate-700 text-slate-400 hover:text-red-400 opacity-60 hover:opacity-100 transition"
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-400 hover:text-red-500 opacity-70 hover:opacity-100 transition"
             aria-label="Delete"
           >
             <Trash2 className="h-4 w-4" />

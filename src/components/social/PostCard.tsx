@@ -359,7 +359,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, variant = 'feed' }) => {
   const containerClass =
     variant === 'card'
       ? 'rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4'
-      : 'bg-white dark:bg-slate-950 px-4 py-3'
+      : 'bg-white dark:bg-slate-950 px-4 py-3 border-b border-slate-200 dark:border-slate-800'
 
   return (
     <>

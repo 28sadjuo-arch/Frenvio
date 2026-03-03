@@ -98,13 +98,13 @@ const PostComposer: React.FC = () => {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+    <div className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-4 py-3">
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="What's happening?"
         className="w-full resize-none bg-transparent outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
-        rows={3}
+        rows={2}
       />
 
       {previewUrl && (

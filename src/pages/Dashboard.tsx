@@ -115,8 +115,8 @@ const Dashboard: React.FC = () => {
   }, [qc, feedQuery])
 
   return (
-    <div className="mx-auto w-full max-w-none px-4 pt-4">
-      <div className="sticky top-[calc(56px+env(safe-area-inset-top))] md:top-[calc(60px+env(safe-area-inset-top))] z-40 -mx-4 px-4 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur border-b border-slate-200/60 dark:border-slate-800/60">
+    <div className="mx-auto w-full max-w-none px-0 sm:px-4 pt-2 sm:pt-4">
+      <div className="sticky top-[calc(56px+env(safe-area-inset-top))] md:top-[calc(60px+env(safe-area-inset-top))] z-40 -mx-0 sm:-mx-4 px-0 sm:px-4 bg-white dark:bg-slate-950 border-b border-slate-200/60 dark:border-slate-800/60">
         <div className="flex">
           <button
             onClick={() => setTab('for_you')}
@@ -135,10 +135,10 @@ const Dashboard: React.FC = () => {
 
       <PostComposer />
 
-      <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden divide-y divide-slate-200 dark:divide-slate-800">
-        {isLoading && <div className="text-sm text-slate-500">Loading…</div>}
+      <div className="mt-0">
+        {isLoading && <div className="px-4 py-4 text-sm text-slate-500">Loading…</div>}
         {!isLoading && (posts || []).length === 0 && (
-          <div className="p-5 text-sm text-slate-600 dark:text-slate-300">
+          <div className="px-4 py-6 text-sm text-slate-600 dark:text-slate-300">
             {tab === 'following' ? "You're not following anyone yet — find people in Search." : "No posts yet. Be the first to post!"}
           </div>
         )}

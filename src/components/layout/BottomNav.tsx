@@ -47,7 +47,8 @@ const BottomNav: React.FC = () => {
   const { pathname } = useLocation()
 
   const { data: badges } = useQuery({
-    queryKey: ['bottomnav-badges', user?.id],
+    // Keep this key consistent with pages that invalidate badge state (e.g. Notifications)
+    queryKey: ['badges', user?.id],
     enabled: !!user,
     refetchInterval: 30_000,
     queryFn: async () => {
