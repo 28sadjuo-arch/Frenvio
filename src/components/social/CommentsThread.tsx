@@ -107,11 +107,6 @@ export default function CommentsThread({
       return
     }
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
->>>>>>> 535f3e15ee6babd4914ad86e3296502b3852a0ee
     // Notifications (best-effort)
     try {
       // Notify post owner about a new comment (excluding self-notify)
@@ -137,10 +132,6 @@ export default function CommentsThread({
       // ignore
     }
 
-<<<<<<< HEAD
-=======
->>>>>>> a09cc60 (Fix: AI quote replies, comment @ auto reply, notifications, markdown support, home refresh)
->>>>>>> 535f3e15ee6babd4914ad86e3296502b3852a0ee
     // AI auto-reply if @frenvioai mentioned
     try {
       const insertedId = (inserted as any)?.id
@@ -234,25 +225,19 @@ export default function CommentsThread({
                 onClick={(e) => {
                   e.stopPropagation()
                   setReplyTo(c)
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
->>>>>>> 535f3e15ee6babd4914ad86e3296502b3852a0ee
-                  const uname = c.profiles?.username || 'user'
+
+                  // Auto-prefill @username when replying
+                  const replyUname = c.profiles?.username || 'user'
                   setText((prev) => {
-                    const mention = `@${uname}`
+                    const mention = `@${replyUname}`
                     const p = (prev || '').trim()
                     if (!p) return `${mention} `
                     if (p.toLowerCase().startsWith(mention.toLowerCase())) return prev
                     return `${mention} ${prev}`
                   })
+
                   // Focus the input for faster replying
                   setTimeout(() => inputRef.current?.focus(), 0)
-<<<<<<< HEAD
-=======
->>>>>>> a09cc60 (Fix: AI quote replies, comment @ auto reply, notifications, markdown support, home refresh)
->>>>>>> 535f3e15ee6babd4914ad86e3296502b3852a0ee
                 }}
               >
                 Reply
@@ -281,10 +266,7 @@ export default function CommentsThread({
             <span>
               Replying to <span className="font-semibold">@{replyTo.profiles?.username || 'user'}</span>
             </span>
-            <button
-              className="hover:text-slate-900 dark:hover:text-slate-100"
-              onClick={() => setReplyTo(null)}
-            >
+            <button className="hover:text-slate-900 dark:hover:text-slate-100" onClick={() => setReplyTo(null)}>
               Cancel
             </button>
           </div>
