@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase, Post } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import PostComposer from '../components/social/PostComposer'
@@ -9,6 +9,7 @@ type FeedTab = 'for_you' | 'following'
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth()
+  const qc = useQueryClient()
   const [tab, setTab] = useState<FeedTab>('for_you')
   // Keep a stable seed so "For you" doesn't reshuffle on every render.
   const [forYouSeed] = useState(() => String(Date.now()))
@@ -102,6 +103,16 @@ const Dashboard: React.FC = () => {
     obs.observe(el)
     return () => obs.disconnect()
   }, [fetchNextPage, hasNextPage, isFetchingNextPage, tab])
+
+  // When the bottom "Home" button is tapped while already on dashboard:
+  // scroll to top happens in BottomNav; here we refresh the feed.
+  useEffect(() => {
+    const onHome = () => {
+      qc.invalidateQueries({ queryKey: feedQuery })
+    }
+    window.addEventListener('dashboard-home', onHome as any)
+    return () => window.removeEventListener('dashboard-home', onHome as any)
+  }, [qc, feedQuery])
 
   return (
     <div className="mx-auto w-full max-w-none px-4 pt-4">

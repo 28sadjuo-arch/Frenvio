@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase'
 import { uploadPostImage } from '../../lib/storage'
 import { useQueryClient } from '@tanstack/react-query'
 import { askFrenvioAi, getFrenvioAiUserId, textMentionsFrenvioAi } from '../../lib/frenvioAi'
+import { extractQuotePostId, stripQuoteToken } from '../../utilis/quote'
 
 const PostComposer: React.FC = () => {
   const { user } = useAuth()
@@ -51,12 +52,28 @@ const PostComposer: React.FC = () => {
       try {
         const insertedPostId = (res.data as any)?.id
         const contentText = base.content || ''
-        if (insertedPostId && textMentionsFrenvioAi(contentText)) {
+        const quotePostId = extractQuotePostId(contentText)
+        const visibleText = stripQuoteToken(contentText)
+
+        // If it's a quote post and the user didn't type @frenvioai in the quote text,
+        // also check the quoted post content for a mention.
+        let mentionsAi = textMentionsFrenvioAi(visibleText)
+        let quotedPostText = ''
+        if (!mentionsAi && quotePostId) {
+          const { data: qp } = await supabase.from('posts').select('content').eq('id', quotePostId).maybeSingle()
+          quotedPostText = String((qp as any)?.content || '')
+          mentionsAi = textMentionsFrenvioAi(stripQuoteToken(quotedPostText))
+        }
+
+        if (insertedPostId && mentionsAi) {
           const aiId = await getFrenvioAiUserId()
           if (aiId) {
             const prompt =
               `You were mentioned as @frenvioai in a post.\n\n` +
-              `Post: "${contentText.slice(0, 1000)}"\n\n` +
+              `Post: "${visibleText.slice(0, 1000)}"\n\n` +
+              (quotePostId
+                ? `This post is quoting another post. Quoted post: "${stripQuoteToken(quotedPostText).slice(0, 1000)}"\n\n`
+                : '') +
               `Reply as Frenvio AI in a comment. If the post asks something, answer it. Otherwise respond friendly.`
             const reply = await askFrenvioAi(prompt)
             if (reply) {

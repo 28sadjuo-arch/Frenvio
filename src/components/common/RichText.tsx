@@ -1,5 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { stripQuoteToken } from '../../utilis/quote'
 
 type Props = {
@@ -8,75 +10,62 @@ type Props = {
 }
 
 /**
- * Renders text with clickable URLs, @mentions, and #hashtags.
- * - Mentions: @username -> /username
- * - Hashtags: #tag -> /search?q=%23tag
+ * Renders text with:
+ * - Markdown (bold, links, etc.)
+ * - Clickable URLs
+ * - @mentions -> /username
+ * - #hashtags -> /search?q=%23tag
  */
 export default function RichText({ text, className }: Props) {
-  const clean = stripQuoteToken(text)
-  const parts: React.ReactNode[] = []
+  const clean = stripQuoteToken(text || '')
 
-  // Regex matches: URL | @mention | #hashtag
-  const pattern =
-    /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(@[a-zA-Z0-9_]{2,30})|(#[a-zA-Z0-9_]{2,50})/g
+  // Preprocess mentions + hashtags into markdown links so markdown rendering still works.
+  // Keep it conservative to avoid weird replacements.
+  const withLinks = clean
+    // @mentions
+    .replace(/(^|[^\w])@([a-zA-Z0-9_]{2,30})\b/g, (_m, p1, u) => `${p1}[@${u}](/${u})`)
+    // #hashtags
+    .replace(/(^|[^\w])#([a-zA-Z0-9_]{2,50})\b/g, (_m, p1, t) => `${p1}[#${t}](/search?q=${encodeURIComponent(`#${t}`)})`)
 
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-
-  while ((match = pattern.exec(clean)) !== null) {
-    const [full, url, www, mention, hashtag] = match
-    const start = match.index
-    const end = start + full.length
-
-    if (start > lastIndex) {
-      parts.push(clean.slice(lastIndex, start))
-    }
-
-    if (url || www) {
-      const href = url ? url : `https://${www}`
-      parts.push(
-        <a
-          key={`${start}-${end}`}
-          href={href}
-          target="_blank"
-          rel="noreferrer"
-          className="text-blue-600 dark:text-blue-400 hover:underline break-all"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {full}
-        </a>
-      )
-    } else if (mention) {
-      const username = mention.slice(1)
-      parts.push(
-        <Link
-          key={`${start}-${end}`}
-          to={`/${username}`}
-          className="text-blue-600 dark:text-blue-400 hover:underline"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {mention}
-        </Link>
-      )
-    } else if (hashtag) {
-      parts.push(
-        <Link
-          key={`${start}-${end}`}
-          to={`/search?q=${encodeURIComponent(hashtag)}`}
-          className="text-blue-600 dark:text-blue-400 hover:underline"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {hashtag}
-        </Link>
-      )
-    }
-
-    lastIndex = end
-  }
-
-  if (lastIndex < clean.length) {
-    parts.push(clean.slice(lastIndex))
-  }
-
-  return <span className={className}>{parts}</span>
+  return (
+    <span className={className}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ href, children, ...props }) => {
+            const h = href || ''
+            const isInternal = h.startsWith('/')
+            if (isInternal) {
+              return (
+                <Link
+                  to={h}
+                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {children}
+                </Link>
+              )
+            }
+            return (
+              <a
+                href={h}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 dark:text-blue-400 hover:underline break-all"
+                onClick={(e) => e.stopPropagation()}
+                {...props}
+              >
+                {children}
+              </a>
+            )
+          },
+          // Avoid extra <p> margins inside inline contexts
+          p: ({ children }) => <span>{children}</span>,
+          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+        }}
+      >
+        {withLinks}
+      </ReactMarkdown>
+    </span>
+  )
 }

@@ -13,16 +13,19 @@ const Item = ({
   to,
   children,
   badge,
+  onClick,
 }: {
   to: string
   children: React.ReactNode
   badge?: boolean
+  onClick?: (e: React.MouseEvent) => void
 }) => {
   const { pathname, search } = useLocation()
   const active = pathname === to || (to !== '/' && pathname.startsWith(to))
   return (
     <Link
       to={to}
+      onClick={onClick}
       className={`flex-1 flex justify-center py-2 ${active ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
       aria-current={active ? 'page' : undefined}
     >
@@ -37,6 +40,8 @@ const Item = ({
 const BottomNav: React.FC = () => {
   const { user, profile } = useAuth()
   const profileHref = profile?.username ? `/${profile.username}` : user ? `/profile/${user.id}` : '/auth'
+
+  const { pathname } = useLocation()
 
   const { data: badges } = useQuery({
     queryKey: ['bottomnav-badges', user?.id],
@@ -92,7 +97,19 @@ const BottomNav: React.FC = () => {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur md:hidden">
       <div className="mx-auto max-w-3xl px-2 flex items-center">
-        <Item to="/dashboard"><Home size={22} /></Item>
+        <Item
+          to="/dashboard"
+          onClick={(e) => {
+            // If already on dashboard, behave like "scroll to top + refresh"
+            if (pathname.startsWith('/dashboard')) {
+              e.preventDefault()
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+              window.dispatchEvent(new CustomEvent('dashboard-home'))
+            }
+          }}
+        >
+          <Home size={22} />
+        </Item>
         <Item to="/search"><Search size={22} /></Item>
         <Item to="/chat" badge={!!badges?.chat}><MessageCircle size={22} /></Item>
         <Item to="/notifications" badge={!!badges?.notifications}><Bell size={22} /></Item>

@@ -108,6 +108,17 @@ export default function FollowButton({
         }
       }
 
+      // Notify the user you followed (best-effort)
+      try {
+        await supabase.from('notifications').insert({
+          user_id: targetUserId,
+          actor_id: user.id,
+          type: 'follow',
+        })
+      } catch {
+        // ignore
+      }
+
       emitUpdate()
       await new Promise(r => setTimeout(r, 500))
       await loadFollowing()
