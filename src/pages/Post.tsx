@@ -33,7 +33,7 @@ const PostPage: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-3xl px-4 pt-4">
-      <PostCard post={post as any} />
+      <PostCard post={post as any} variant="card" />
       <div id="comments-thread"><CommentsThread postId={id!} postOwnerId={(post as any)?.user_id} /></div>
     </div>
   )

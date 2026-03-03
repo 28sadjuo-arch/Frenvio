@@ -38,17 +38,17 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
-      <ProfileHeader profile={profile} onUpdated={() => refetch()} />
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
+      <ProfileHeader profile={profile} onUpdated={() => refetch()} variant="embedded" />
 
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+      <div className="border-t border-slate-200 dark:border-slate-800">
         <div className="flex">
           <TabBtn value="posts" label="Posts" />
           <TabBtn value="reposts" label="Reposts" />
           <TabBtn value="photos" label="Photos" />
         </div>
-        <div className="p-4">
-          <ProfilePosts userId={profile.id} mode={tab} />
+        <div className="p-0">
+          <ProfilePosts userId={profile.id} mode={tab} variant="embedded" />
         </div>
       </div>
     </div>

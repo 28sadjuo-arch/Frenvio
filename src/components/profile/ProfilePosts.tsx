@@ -7,9 +7,10 @@ import { getPinnedPostIds } from '../../utilis/pins'
 interface ProfilePostsProps {
   userId: string
   mode?: 'posts' | 'reposts' | 'photos'
+  variant?: 'card' | 'embedded'
 }
 
-const ProfilePosts: React.FC<ProfilePostsProps> = ({ userId, mode = 'posts' }) => {
+const ProfilePosts: React.FC<ProfilePostsProps> = ({ userId, mode = 'posts', variant = 'card' }) => {
   const { data: pinnedIds = [] } = useQuery({
     queryKey: ['pinnedPosts', userId],
     enabled: mode === 'posts',
@@ -64,16 +65,22 @@ const ProfilePosts: React.FC<ProfilePostsProps> = ({ userId, mode = 'posts' }) =
   }, [posts, pinnedIds, mode])
 
   return (
-    <div className="space-y-4">
+    <div
+      className={
+        variant === 'card'
+          ? 'rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden divide-y divide-slate-200 dark:divide-slate-800'
+          : 'bg-white dark:bg-slate-950 overflow-hidden divide-y divide-slate-200 dark:divide-slate-800'
+      }
+    >
       {displayPosts?.map((post) => (
         <div key={post.id}>
           {mode === 'posts' && pinnedIds?.includes(post.id) ? (
-            <div className="mb-2 text-xs text-slate-500 font-semibold">📌 Pinned</div>
+            <div className="px-4 pt-3 text-[11px] text-slate-500 font-semibold">📌 Pinned</div>
           ) : null}
-          <PostCard post={post} />
+          <PostCard post={post} variant="feed" />
         </div>
       ))}
-      {!displayPosts?.length && <div className="text-sm text-slate-500">No posts yet.</div>}
+      {!displayPosts?.length && <div className="p-4 text-sm text-slate-500">No posts yet.</div>}
     </div>
   )
 }

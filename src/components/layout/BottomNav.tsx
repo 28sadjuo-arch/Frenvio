@@ -12,11 +12,13 @@ const Dot = () => (
 const Item = ({
   to,
   children,
+  label,
   badge,
   onClick,
 }: {
   to: string
   children: React.ReactNode
+  label: string
   badge?: boolean
   onClick?: (e: React.MouseEvent) => void
 }) => {
@@ -26,13 +28,14 @@ const Item = ({
     <Link
       to={to}
       onClick={onClick}
-      className={`flex-1 flex justify-center py-2 ${active ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
+      className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-[56px] ${active ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
       aria-current={active ? 'page' : undefined}
     >
       <span className="relative inline-flex">
         {children}
         {badge ? <Dot /> : null}
       </span>
+      <span className={`text-[11px] leading-none ${active ? 'font-semibold' : 'font-medium'}`}>{label}</span>
     </Link>
   )
 }
@@ -95,10 +98,11 @@ const BottomNav: React.FC = () => {
 
   // Hide on desktop
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur md:hidden">
-      <div className="mx-auto max-w-3xl px-2 flex items-center">
+    <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur md:hidden pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto max-w-3xl px-2 flex items-stretch">
         <Item
           to="/dashboard"
+          label="Home"
           onClick={(e) => {
             // If already on dashboard, behave like "scroll to top + refresh"
             if (pathname.startsWith('/dashboard')) {
@@ -108,12 +112,12 @@ const BottomNav: React.FC = () => {
             }
           }}
         >
-          <Home size={22} />
+          <Home size={26} />
         </Item>
-        <Item to="/search"><Search size={22} /></Item>
-        <Item to="/chat" badge={!!badges?.chat}><MessageCircle size={22} /></Item>
-        <Item to="/notifications" badge={!!badges?.notifications}><Bell size={22} /></Item>
-        <Item to={profileHref}><User size={22} /></Item>
+        <Item to="/search" label="Search"><Search size={26} /></Item>
+        <Item to="/chat" label="Chat" badge={!!badges?.chat}><MessageCircle size={26} /></Item>
+        <Item to="/notifications" label="Alerts" badge={!!badges?.notifications}><Bell size={26} /></Item>
+        <Item to={profileHref} label="Profile"><User size={26} /></Item>
       </div>
     </nav>
   )

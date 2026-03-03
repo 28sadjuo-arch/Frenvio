@@ -27,6 +27,7 @@ import { getPinnedPostIds, togglePin } from '../../utilis/pins'
 
 interface PostCardProps {
   post: Post
+  variant?: 'feed' | 'card'
 }
 
 const avatarFallback = (username?: string | null) => {
@@ -34,7 +35,7 @@ const avatarFallback = (username?: string | null) => {
   return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(letter)}`
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post }) => {
+const PostCard: React.FC<PostCardProps> = ({ post, variant = 'feed' }) => {
   const { user } = useAuth()
   const qc = useQueryClient()
   const navigate = useNavigate()
@@ -355,9 +356,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     setOptimisticCommentsDelta(0)
   }
 
+  const containerClass =
+    variant === 'card'
+      ? 'rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4'
+      : 'bg-white dark:bg-slate-950 px-4 py-3'
+
   return (
     <>
-      <div onClick={() => navigate(`/p/${post.id}`)} role="button" className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
+      <div onClick={() => navigate(`/p/${post.id}`)} role="button" className={containerClass}>
         <div className="flex gap-3">
           <Link
             to={profileHref}
@@ -504,32 +510,66 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-1 sm:justify-start sm:gap-2 sm:pl-14">
-          <button className={likeBtn} onClick={(e) => { e.stopPropagation(); handleLike() }}>
-                          <Heart 
-                            className={`h-4 w-4 ${liked ? 'text-red-500' : ''}`} 
-                            fill={liked ? 'currentColor' : 'none'} 
-                          />
-                          <span>{likes}</span>
-                        </button>
+        <div className={`mt-3 ${variant === 'card' ? 'sm:pl-14' : ''}`}>
+          <div className="grid grid-cols-5 gap-1">
+            <button
+              className={`${likeBtn} h-10`}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleLike()
+              }}
+              aria-label="Like"
+            >
+              <Heart className={`h-4 w-4 ${liked ? 'text-red-500' : ''}`} fill={liked ? 'currentColor' : 'none'} />
+              <span className="tabular-nums">{likes}</span>
+            </button>
 
-                        <button className={repostBtn} onClick={(e) => { e.stopPropagation(); handleRepost() }}>
-                          <Repeat2 className="h-4 w-4" />
-                          <span>{reposts}</span>
-                        </button>
+            <button
+              className={`${repostBtn} h-10`}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleRepost()
+              }}
+              aria-label="Repost"
+            >
+              <Repeat2 className="h-4 w-4" />
+              <span className="tabular-nums">{reposts}</span>
+            </button>
 
-                        <button className={actionBtn} onClick={(e) => { e.stopPropagation(); navigate(`/p/${post.id}`) }}>
-                          <MessageCircle className="h-4 w-4" />
-                          <span>{commentsCount}</span>
-                        </button>
+            <button
+              className={`${actionBtn} h-10`}
+              onClick={(e) => {
+                e.stopPropagation()
+                navigate(`/p/${post.id}`)
+              }}
+              aria-label="Comments"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span className="tabular-nums">{commentsCount}</span>
+            </button>
 
-                        <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleQuote() }}>
-                          <Quote className="h-4 w-4" />
-                        </button>
+            <button
+              className={`${actionBtn} h-10`}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleQuote()
+              }}
+              aria-label="Quote"
+            >
+              <Quote className="h-4 w-4" />
+            </button>
 
-                        <button className={actionBtn} onClick={(e) => { e.stopPropagation(); handleShare() }}>
-                          <Send className="h-4 w-4" />
-                        </button>
+            <button
+              className={`${actionBtn} h-10`}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleShare()
+              }}
+              aria-label="Share"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
       </div>

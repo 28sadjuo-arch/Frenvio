@@ -10,7 +10,7 @@ const TopNav: React.FC = () => {
 
   return (
     <nav
-      className={`sticky top-0 z-50 border-b border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-950/80 backdrop-blur ${
+      className={`sticky top-0 z-50 border-b border-slate-200/60 dark:border-slate-800/60 bg-white/90 dark:bg-slate-950/90 backdrop-blur pt-[env(safe-area-inset-top)] ${
         (pathname === '/chat' && /[?&](to|room|group)=/.test(search)) ? 'hidden md:block' : ''
       }`}
     >

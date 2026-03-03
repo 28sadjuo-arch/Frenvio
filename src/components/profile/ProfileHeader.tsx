@@ -50,7 +50,15 @@ function SocialIconLink({
   )
 }
 
-export default function ProfileHeader({ profile, onUpdated }: { profile: Profile; onUpdated: () => void }) {
+export default function ProfileHeader({
+  profile,
+  onUpdated,
+  variant = 'card',
+}: {
+  profile: Profile
+  onUpdated: () => void
+  variant?: 'card' | 'embedded'
+}) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const isMe = user?.id === profile.id
@@ -164,7 +172,13 @@ export default function ProfileHeader({ profile, onUpdated }: { profile: Profile
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+    <div
+      className={
+        variant === 'card'
+          ? 'rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden'
+          : 'bg-white dark:bg-slate-950 overflow-hidden'
+      }
+    >
       {/* Banner */}
       <div className="h-36 relative">
         {profile.banner_url ? (
